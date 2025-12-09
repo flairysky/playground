@@ -10,6 +10,10 @@ class RegistrationForm(FlaskForm):
         DataRequired(),
         Length(min=3, max=80, message='Username must be between 3 and 80 characters')
     ])
+    nickname = StringField('Nickname (optional)', validators=[
+        Optional(),
+        Length(max=80, message='Nickname must be at most 80 characters')
+    ])
     email = StringField('Email', validators=[
         DataRequired(),
         Email(message='Invalid email address')
@@ -22,6 +26,7 @@ class RegistrationForm(FlaskForm):
         DataRequired(),
         EqualTo('password', message='Passwords must match')
     ])
+    show_leaderboard = BooleanField('I am competitive and want to see the leaderboard on my dashboard', default=True)
     submit = SubmitField('Register')
     
     def validate_username(self, username):

@@ -98,6 +98,42 @@
                 </form>
             </div>
         </div>
+        
+        <!-- Book Request Card -->
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-book"></i> Can't Find Your Book?
+                </h5>
+                <hr>
+                <p class="text-muted small mb-3">
+                    Didn't find your favorite book? Let us know and we'll try to add it as soon as possible!
+                </p>
+                
+                <form method="POST" action="{{ url_for('request_book') }}">
+                    <div class="mb-3">
+                        <label for="book_title" class="form-label">Book Title *</label>
+                        <input type="text" class="form-control" id="book_title" name="book_title" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="author" class="form-label">Author (Optional)</label>
+                        <input type="text" class="form-control" id="author" name="author">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="reason" class="form-label">Why this book? (Optional)</label>
+                        <textarea class="form-control" id="reason" name="reason" rows="2" placeholder="Tell us why you'd like this book added..."></textarea>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-send"></i> Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
     
     <!-- Existing Plans -->

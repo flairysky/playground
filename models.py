@@ -12,18 +12,21 @@ class User(UserMixin, db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    nickname = db.Column(db.String(80))  # Display name for leaderboard
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     date_joined = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     streak_days = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
+    nickname_changed_at = db.Column(db.DateTime)  # Track when nickname was last changed
     
     # Privacy settings
     public_profile = db.Column(db.Boolean, default=True)
     public_stats = db.Column(db.Boolean, default=True)
     public_uploads = db.Column(db.Boolean, default=False)
     public_activity = db.Column(db.Boolean, default=True)
+    show_leaderboard = db.Column(db.Boolean, default=True)  # Whether to show leaderboard on dashboard
     
     # Relationships
     submissions = db.relationship('Submission', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -37,6 +40,19 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Verify password against hash."""
         return check_password_hash(self.password_hash, password)
+    
+    def can_change_nickname(self):
+        """Check if user can change nickname (once per month)."""
+        if not self.nickname_changed_at:
+            return True
+        
+        from datetime import datetime, timedelta
+        one_month_ago = datetime.utcnow() - timedelta(days=30)
+        return self.nickname_changed_at < one_month_ago
+    
+    def get_display_name(self):
+        """Get the display name (nickname or username)."""
+        return self.nickname if self.nickname else self.username
     
     def get_total_exercises_completed(self):
         """Get total unique exercises completed by this user."""
@@ -99,6 +115,7 @@ class Book(db.Model):
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
+    category = db.Column(db.String(50), default='undergraduate')  # high_school, undergraduate, graduate
     
     # Relationships
     chapters = db.relationship('Chapter', backref='book', lazy='dynamic', 
@@ -389,3 +406,22 @@ class ActivityLog(db.Model):
     
     def __repr__(self):
         return f'<ActivityLog User {self.user_id} on {self.date}>'
+
+
+class BookRequest(db.Model):
+    """Book request model for users to suggest new books."""
+    __tablename__ = 'book_requests'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    book_title = db.Column(db.String(200), nullable=False)
+    author = db.Column(db.String(200))
+    reason = db.Column(db.Text)
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    user = db.relationship('User', backref=db.backref('book_requests', lazy='dynamic'))
+    
+    def __repr__(self):
+        return f'<BookRequest {self.book_title} by User {self.user_id}>'

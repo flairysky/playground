@@ -157,7 +157,12 @@ def create_app(config_class=Config):
         
         form = RegistrationForm()
         if form.validate_on_submit():
-            user = User(username=form.username.data, email=form.email.data)
+            user = User(
+                username=form.username.data,
+                email=form.email.data,
+                nickname=form.nickname.data if form.nickname.data else None,
+                show_leaderboard=form.show_leaderboard.data
+            )
             user.set_password(form.password.data)
             db.session.add(user)
             db.session.commit()
@@ -209,8 +214,12 @@ def create_app(config_class=Config):
         """User dashboard."""
         from datetime import datetime, timedelta
         
-        # Get all books with progress
-        books = Book.query.all()
+        # Get only books that the user has in their weekly plans
+        user_book_ids = db.session.query(WeeklyPlan.book_id.distinct())\
+            .filter(WeeklyPlan.user_id == current_user.id).all()
+        user_book_ids = [book_id[0] for book_id in user_book_ids]
+        
+        books = Book.query.filter(Book.id.in_(user_book_ids)).all() if user_book_ids else []
         book_data = []
         for book in books:
             progress = current_user.get_book_progress(book.id)
@@ -275,13 +284,29 @@ def create_app(config_class=Config):
             'weekly_average': weekly_average
         }
         
+        # Get leaderboard data only if user wants to see it
+        leaderboard_data = None
+        if current_user.show_leaderboard:
+            # Get top 10 users for dashboard mini-leaderboard
+            users = User.query.all()
+            leaderboard_list = []
+            for user in users:
+                leaderboard_list.append({
+                    'user': user,
+                    'display_name': user.get_display_name(),
+                    'total_exercises': user.get_total_exercises_completed()
+                })
+            leaderboard_list.sort(key=lambda x: x['total_exercises'], reverse=True)
+            leaderboard_data = leaderboard_list[:10]  # Top 10 only for dashboard
+        
         return render_template('dashboard.html',
                              books=book_data,
                              active_plans=active_plans,
                              badges=badges,
                              activity_calendar=activity_calendar,
                              recent_submissions=recent_submissions,
-                             stats=stats)
+                             stats=stats,
+                             leaderboard=leaderboard_data)
     
     @app.route('/books/<slug>')
     @login_required
@@ -393,6 +418,8 @@ def create_app(config_class=Config):
         
         # Get sort parameter (default: total_exercises)
         sort_by = request.args.get('sort', 'total_exercises')
+        # Get category filter parameter
+        category_filter = request.args.get('category', 'all')
         
         # Get all users
         users = User.query.all()
@@ -405,25 +432,45 @@ def create_app(config_class=Config):
         
         leaderboard_data = []
         for user in users:
-            # Get submissions for different time periods
-            week_submissions = Submission.query.filter(
-                Submission.user_id == user.id,
-                Submission.created_at >= week_start
-            ).count()
-            
-            month_submissions = Submission.query.filter(
-                Submission.user_id == user.id,
-                Submission.created_at >= month_start
-            ).count()
-            
-            year_submissions = Submission.query.filter(
-                Submission.user_id == user.id,
-                Submission.created_at >= year_start
-            ).count()
+            # Build base query for submissions
+            if category_filter != 'all':
+                # Filter submissions by book category
+                week_query = db.session.query(Submission).join(Exercise).join(Chapter).join(Book)\
+                    .filter(Submission.user_id == user.id, Submission.created_at >= week_start, Book.category == category_filter)
+                month_query = db.session.query(Submission).join(Exercise).join(Chapter).join(Book)\
+                    .filter(Submission.user_id == user.id, Submission.created_at >= month_start, Book.category == category_filter)
+                year_query = db.session.query(Submission).join(Exercise).join(Chapter).join(Book)\
+                    .filter(Submission.user_id == user.id, Submission.created_at >= year_start, Book.category == category_filter)
+                total_query = db.session.query(Submission).join(Exercise).join(Chapter).join(Book)\
+                    .filter(Submission.user_id == user.id, Book.category == category_filter)
+                
+                week_submissions = week_query.count()
+                month_submissions = month_query.count()
+                year_submissions = year_query.count()
+                total_exercises = total_query.count()
+            else:
+                # Get all submissions (no category filter)
+                week_submissions = Submission.query.filter(
+                    Submission.user_id == user.id,
+                    Submission.created_at >= week_start
+                ).count()
+                
+                month_submissions = Submission.query.filter(
+                    Submission.user_id == user.id,
+                    Submission.created_at >= month_start
+                ).count()
+                
+                year_submissions = Submission.query.filter(
+                    Submission.user_id == user.id,
+                    Submission.created_at >= year_start
+                ).count()
+                
+                total_exercises = user.get_total_exercises_completed()
             
             leaderboard_data.append({
                 'user': user,
-                'total_exercises': user.get_total_exercises_completed(),
+                'display_name': user.get_display_name(),
+                'total_exercises': total_exercises,
                 'streak': user.streak_days,
                 'longest_streak': user.longest_streak,
                 'week_exercises': week_submissions,
@@ -452,7 +499,10 @@ def create_app(config_class=Config):
         for idx, entry in enumerate(leaderboard_data, 1):
             entry['rank'] = idx
         
-        return render_template('leaderboard.html', leaderboard=leaderboard_data, sort_by=sort_by)
+        return render_template('leaderboard.html', 
+                             leaderboard=leaderboard_data, 
+                             sort_by=sort_by,
+                             category_filter=category_filter)
     
     @app.route('/weekly-plan', methods=['GET', 'POST'])
     @login_required
@@ -677,17 +727,57 @@ def create_app(config_class=Config):
     def settings():
         """User settings page."""
         if request.method == 'POST':
+            # Handle nickname change
+            new_nickname = request.form.get('nickname', '').strip()
+            if new_nickname and new_nickname != current_user.nickname:
+                if current_user.can_change_nickname():
+                    from datetime import datetime
+                    current_user.nickname = new_nickname
+                    current_user.nickname_changed_at = datetime.utcnow()
+                    flash('Nickname updated successfully!', 'success')
+                else:
+                    flash('You can only change your nickname once per month.', 'warning')
+            
             # Update privacy settings
             current_user.public_profile = 'public_profile' in request.form
             current_user.public_stats = 'public_stats' in request.form
             current_user.public_uploads = 'public_uploads' in request.form
             current_user.public_activity = 'public_activity' in request.form
+            current_user.show_leaderboard = 'show_leaderboard' in request.form
             
             db.session.commit()
             flash('Settings updated successfully!', 'success')
             return redirect(url_for('settings'))
         
         return render_template('settings.html')
+    
+    @app.route('/request-book', methods=['POST'])
+    @login_required
+    def request_book():
+        """Handle book request submissions."""
+        from models import BookRequest
+        
+        book_title = request.form.get('book_title', '').strip()
+        author = request.form.get('author', '').strip()
+        reason = request.form.get('reason', '').strip()
+        
+        if not book_title:
+            flash('Please provide a book title.', 'error')
+            return redirect(url_for('weekly_plan'))
+        
+        # Create book request
+        book_request = BookRequest(
+            user_id=current_user.id,
+            book_title=book_title,
+            author=author,
+            reason=reason
+        )
+        
+        db.session.add(book_request)
+        db.session.commit()
+        
+        flash('Thank you! Your book request has been submitted. We\'ll review it and try to add it soon!', 'success')
+        return redirect(url_for('weekly_plan'))
     
     return app
 

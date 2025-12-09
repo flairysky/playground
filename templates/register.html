@@ -24,6 +24,20 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
+                        <small class="form-text text-muted">Used for login</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.nickname.label(class="form-label") }}
+                        {{ form.nickname(class="form-control" + (" is-invalid" if form.nickname.errors else ""), placeholder="How you want to appear on the leaderboard") }}
+                        {% if form.nickname.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.nickname.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Leave empty to use your username. Can be changed once per month.</small>
                     </div>
                     
                     <div class="mb-3">
@@ -60,6 +74,16 @@
                                 {% endfor %}
                             </div>
                         {% endif %}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.show_leaderboard(class="form-check-input") }}
+                            {{ form.show_leaderboard.label(class="form-check-label") }}
+                        </div>
+                        <small class="form-text text-muted d-block mt-2">
+                            <i class="bi bi-info-circle"></i> Don't worry, you can change your preferences later in the settings.
+                        </small>
                     </div>
                     
                     <div class="d-grid mb-3">

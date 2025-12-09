@@ -19,6 +19,37 @@
                     <hr>
                     <form method="POST">
                         <div class="mb-4">
+                            <h6 class="text-primary"><i class="bi bi-person-badge"></i> Display Settings</h6>
+                            <p class="text-muted small mb-3">Customize your display name and preferences</p>
+                            
+                            <div class="mb-3">
+                                <label for="nickname" class="form-label">Nickname</label>
+                                <input type="text" class="form-control" id="nickname" name="nickname" 
+                                       value="{{ current_user.nickname if current_user.nickname else '' }}" 
+                                       placeholder="{{ current_user.username }}"
+                                       maxlength="80">
+                                <small class="form-text text-muted">
+                                    How you appear on the leaderboard. 
+                                    {% if current_user.can_change_nickname() %}
+                                        <span class="text-success">You can change your nickname now.</span>
+                                    {% else %}
+                                        <span class="text-warning">You can change your nickname again on {{ (current_user.nickname_changed_at + timedelta(days=30)).strftime('%B %d, %Y') }}.</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="show_leaderboard" name="show_leaderboard" 
+                                       {% if current_user.show_leaderboard %}checked{% endif %}>
+                                <label class="form-check-label" for="show_leaderboard">
+                                    <strong>Show Leaderboard on Dashboard</strong>
+                                    <br>
+                                    <small class="text-muted">Display leaderboard rankings on your dashboard. You'll still appear on the leaderboard regardless of this setting.</small>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
                             <h6 class="text-primary"><i class="bi bi-shield-lock"></i> Profile Visibility</h6>
                             <p class="text-muted small">Control what other users can see on your profile</p>
                             
@@ -65,7 +96,7 @@
 
                         <div class="alert alert-info">
                             <i class="bi bi-info-circle"></i> 
-                            <strong>Note:</strong> Even with a private profile, your username and rank will still appear on the leaderboard.
+                            <strong>Note:</strong> Even with a private profile, your display name and rank will still appear on the leaderboard.
                         </div>
 
                         <div class="d-flex gap-2">

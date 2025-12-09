@@ -194,6 +194,76 @@
     </div>
 </div>
 
+<!-- Leaderboard Widget (only shown if user has enabled it) -->
+{% if current_user.show_leaderboard and leaderboard_data %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-trophy"></i> Top Performers
+                </h5>
+                <hr>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>User</th>
+                                <th>Exercises</th>
+                                <th>Streak</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in leaderboard_data[:5] %}
+                            <tr {% if entry.is_current_user %}class="table-success"{% endif %}>
+                                <td>
+                                    <strong>
+                                        {% if entry.rank == 1 %}
+                                            🥇
+                                        {% elif entry.rank == 2 %}
+                                            🥈
+                                        {% elif entry.rank == 3 %}
+                                            🥉
+                                        {% else %}
+                                            #{{ entry.rank }}
+                                        {% endif %}
+                                    </strong>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('profile', username=entry.user.username) }}" class="text-decoration-none">
+                                        {{ entry.display_name }}
+                                    </a>
+                                    {% if entry.is_current_user %}
+                                        <span class="badge bg-success">You</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ entry.total_exercises }}</td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">
+                                        {{ entry.streak }} 🔥
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-end mt-2">
+                    <a href="{{ url_for('leaderboard') }}" class="btn btn-sm btn-outline-primary">
+                        View Full Leaderboard
+                    </a>
+                </div>
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> Not interested? You can hide this widget in 
+                    <a href="{{ url_for('settings') }}">Settings</a>.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Books Section -->
 <div class="row mb-4">
     <div class="col-12">

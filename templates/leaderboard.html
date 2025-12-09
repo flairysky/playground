@@ -14,6 +14,30 @@
     </div>
 </div>
 
+<!-- Category Filter -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="btn-group" role="group" aria-label="Category filter">
+            <a href="?category=all{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn {% if category_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                All Categories
+            </a>
+            <a href="?category=high_school{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn {% if category_filter == 'high_school' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                High School
+            </a>
+            <a href="?category=undergraduate{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn {% if category_filter == 'undergraduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Undergraduate
+            </a>
+            <a href="?category=graduate{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn {% if category_filter == 'graduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                Graduate
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-12">
         <div class="card shadow-sm">
@@ -25,25 +49,25 @@
                                 <th style="width: 80px;">Rank</th>
                                 <th>User</th>
                                 <th class="text-center">
-                                    <a href="?sort=total_exercises" class="text-decoration-none {% if sort_by == 'total_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=total_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'total_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         Total Exercises
                                         {% if sort_by == 'total_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=week_exercises" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=week_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Week
                                         {% if sort_by == 'week_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=month_exercises" class="text-decoration-none {% if sort_by == 'month_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=month_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'month_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Month
                                         {% if sort_by == 'month_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=year_exercises" class="text-decoration-none {% if sort_by == 'year_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=year_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'year_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Year
                                         {% if sort_by == 'year_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
@@ -84,7 +108,7 @@
                                 </td>
                                 <td>
                                     <a href="{{ url_for('user_profile', username=entry.user.username) }}" class="text-decoration-none">
-                                        <strong>{{ entry.user.username }}</strong>
+                                        <strong>{{ entry.display_name }}</strong>
                                     </a>
                                     {% if entry.user.id == current_user.id %}
                                         <span class="badge bg-info">You</span>
