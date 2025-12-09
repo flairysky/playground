@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}My Uploads{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2><i class="bi bi-file-earmark-arrow-up"></i> My Uploads</h2>
+            <p class="text-muted">View and manage all your uploaded solutions</p>
+        </div>
+    </div>
+
+    {% if uploads %}
+    <div class="row">
+        {% for upload in uploads %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-file-earmark-pdf"></i> 
+                            <span class="small">{{ upload.filename }}</span>
+                        </h5>
+                        <button class="btn btn-sm btn-primary" 
+                                onclick="viewFile('{{ url_for('static', filename='uploads/' + upload.filename) }}', '{{ upload.filename }}')">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="bi bi-calendar"></i> 
+                            {{ upload.created_at.strftime('%b %d, %Y at %I:%M %p') }}
+                        </small>
+                    </div>
+
+                    <div class="mb-2">
+                        <strong class="text-primary">{{ upload.book }}</strong>
+                    </div>
+
+                    <div class="mb-2">
+                        <small class="text-muted d-block">
+                            <strong>{{ upload.exercises|length }}</strong> exercise(s):
+                        </small>
+                        <div class="d-flex flex-wrap gap-1 mt-1">
+                            {% for exercise in upload.exercises %}
+                            <span class="badge bg-secondary" title="{{ exercise.chapter }} - {{ exercise.title }}">
+                                Ex {{ exercise.number }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('static', filename='uploads/' + upload.filename) }}" 
+                           class="btn btn-sm btn-outline-primary flex-fill" 
+                           download>
+                            <i class="bi bi-download"></i> Download
+                        </a>
+                        <button class="btn btn-sm btn-outline-info flex-fill" 
+                                onclick="viewFile('{{ url_for('static', filename='uploads/' + upload.filename) }}', '{{ upload.filename }}')">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <h4><i class="bi bi-inbox"></i></h4>
+                <p class="mb-0">No uploads yet. Start solving exercises and upload your solutions!</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- File Viewer Modal -->
+<div class="modal fade" id="fileViewerModal" tabindex="-1" aria-labelledby="fileViewerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fileViewerModalLabel">
+                    <i class="bi bi-file-earmark"></i> <span id="modalFilename"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" style="min-height: 70vh;">
+                <div id="fileViewerContent" class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <a id="downloadLink" href="#" class="btn btn-primary" download>
+                    <i class="bi bi-download"></i> Download
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let fileModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    fileModal = new bootstrap.Modal(document.getElementById('fileViewerModal'));
+});
+
+function viewFile(fileUrl, filename) {
+    const modalFilename = document.getElementById('modalFilename');
+    const downloadLink = document.getElementById('downloadLink');
+    const contentDiv = document.getElementById('fileViewerContent');
+    
+    modalFilename.textContent = filename;
+    downloadLink.href = fileUrl;
+    downloadLink.download = filename;
+    
+    // Reset content
+    contentDiv.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+    
+    // Determine file type
+    const ext = filename.split('.').pop().toLowerCase();
+    
+    if (ext === 'pdf') {
+        // PDF viewer
+        contentDiv.innerHTML = `
+            <embed src="${fileUrl}" 
+                   type="application/pdf" 
+                   width="100%" 
+                   height="70vh"
+                   style="border: none;" />
+        `;
+    } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        // Image viewer
+        contentDiv.innerHTML = `
+            <img src="${fileUrl}" 
+                 class="img-fluid" 
+                 alt="${filename}"
+                 style="max-width: 100%; max-height: 70vh; object-fit: contain;" />
+        `;
+    } else {
+        // Unsupported file type
+        contentDiv.innerHTML = `
+            <div class="alert alert-warning m-4">
+                <h5><i class="bi bi-exclamation-triangle"></i> Preview Not Available</h5>
+                <p>This file type cannot be previewed in the browser. Please download it to view.</p>
+            </div>
+        `;
+    }
+    
+    fileModal.show();
+}
+</script>
+
+<style>
+.gap-1 {
+    gap: 0.25rem;
+}
+</style>
+{% endblock %}

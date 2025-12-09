@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Math Exercise Tracker{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="mb-4">
+                <i class="bi bi-mortarboard-fill text-primary" style="font-size: 5rem;"></i>
+            </div>
+            
+            <h1 class="display-4 fw-bold mb-3">MathTracker</h1>
+            <p class="lead text-muted mb-4">
+                LeetCode for Math Books
+            </p>
+            
+            <div class="card shadow-sm mb-5">
+                <div class="card-body p-4">
+                    <h3 class="card-title mb-3">Track Your Mathematical Journey</h3>
+                    <p class="card-text">
+                        Master mathematics by solving textbook exercises systematically.
+                        Track your progress, maintain study streaks, and compete with friends.
+                    </p>
+                    
+                    <div class="row g-3 text-start my-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-check-circle-fill text-success me-2 mt-1"></i>
+                                <div>
+                                    <strong>Upload Solutions</strong><br>
+                                    <small class="text-muted">Track completed exercises by uploading your work</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-graph-up-arrow text-primary me-2 mt-1"></i>
+                                <div>
+                                    <strong>Progress Tracking</strong><br>
+                                    <small class="text-muted">Visualize your progress through each book</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-calendar-week text-info me-2 mt-1"></i>
+                                <div>
+                                    <strong>Weekly Plans</strong><br>
+                                    <small class="text-muted">Set goals and deadlines for your studies</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-trophy-fill text-warning me-2 mt-1"></i>
+                                <div>
+                                    <strong>Leaderboard</strong><br>
+                                    <small class="text-muted">Compete with other learners</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-fire text-danger me-2 mt-1"></i>
+                                <div>
+                                    <strong>Daily Streaks</strong><br>
+                                    <small class="text-muted">Maintain consistency with activity tracking</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start">
+                                <i class="bi bi-award-fill text-success me-2 mt-1"></i>
+                                <div>
+                                    <strong>Achievements</strong><br>
+                                    <small class="text-muted">Earn badges for your accomplishments</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-4 me-md-2">
+                            <i class="bi bi-person-plus"></i> Get Started
+                        </a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary btn-lg px-4">
+                            <i class="bi bi-box-arrow-in-right"></i> Log In
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Version 1.0</strong> - Running locally with Flask and SQLite
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

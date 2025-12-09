@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - Math Exercise Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-trophy-fill text-warning"></i> Global Leaderboard
+        </h1>
+        <p class="text-muted">
+            See how you rank against other learners. Keep solving exercises to climb the ranks!
+        </p>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Rank</th>
+                                <th>User</th>
+                                <th class="text-center">
+                                    <a href="?sort=total_exercises" class="text-decoration-none {% if sort_by == 'total_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        Total Exercises
+                                        {% if sort_by == 'total_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
+                                    <a href="?sort=week_exercises" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        This Week
+                                        {% if sort_by == 'week_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
+                                    <a href="?sort=month_exercises" class="text-decoration-none {% if sort_by == 'month_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        This Month
+                                        {% if sort_by == 'month_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
+                                    <a href="?sort=year_exercises" class="text-decoration-none {% if sort_by == 'year_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        This Year
+                                        {% if sort_by == 'year_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
+                                    <a href="?sort=streak" class="text-decoration-none {% if sort_by == 'streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        Current Streak
+                                        {% if sort_by == 'streak' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
+                                    <a href="?sort=longest_streak" class="text-decoration-none {% if sort_by == 'longest_streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        Longest Streak
+                                        {% if sort_by == 'longest_streak' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in leaderboard %}
+                            <tr {% if entry.user.id == current_user.id %}class="table-primary"{% endif %}>
+                                <td>
+                                    {% if entry.rank == 1 %}
+                                        <span class="badge bg-warning text-dark fs-5">
+                                            <i class="bi bi-trophy-fill"></i> #1
+                                        </span>
+                                    {% elif entry.rank == 2 %}
+                                        <span class="badge bg-secondary fs-6">
+                                            <i class="bi bi-award-fill"></i> #2
+                                        </span>
+                                    {% elif entry.rank == 3 %}
+                                        <span class="badge bg-light text-dark fs-6">
+                                            <i class="bi bi-award-fill"></i> #3
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-light text-dark">#{{ entry.rank }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ entry.user.username }}</strong>
+                                    {% if entry.user.id == current_user.id %}
+                                        <span class="badge bg-info">You</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-primary rounded-pill">
+                                        {{ entry.total_exercises }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    {% if entry.week_exercises > 0 %}
+                                        <span class="badge bg-info rounded-pill">
+                                            {{ entry.week_exercises }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if entry.month_exercises > 0 %}
+                                        <span class="badge bg-info rounded-pill">
+                                            {{ entry.month_exercises }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if entry.year_exercises > 0 %}
+                                        <span class="badge bg-info rounded-pill">
+                                            {{ entry.year_exercises }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if entry.streak > 0 %}
+                                        <span class="badge bg-danger rounded-pill">
+                                            <i class="bi bi-fire"></i> {{ entry.streak }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if entry.longest_streak > 0 %}
+                                        <span class="badge bg-warning text-dark rounded-pill">
+                                            <i class="bi bi-trophy"></i> {{ entry.longest_streak }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if not leaderboard %}
+                <div class="text-center py-5">
+                    <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
+                    <p class="text-muted mt-3">No users yet. Be the first to complete some exercises!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

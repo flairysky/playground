@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}{{ book.title }} - Math Exercise Tracker{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">{{ book.title }}</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-2">{{ book.title }}</h1>
+        <p class="text-muted lead">by {{ book.author }}</p>
+        
+        {% if book.description %}
+        <p>{{ book.description }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i>
+            <strong>How to submit:</strong> Select one or more exercises using the checkboxes below, 
+            then upload a single file containing your solution(s). The file will be associated with 
+            all selected exercises.
+        </div>
+    </div>
+</div>
+
+<!-- Upload Form -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <i class="bi bi-cloud-upload"></i> Submit Solutions
+                </h5>
+                <hr>
+                <form method="POST" action="{{ url_for('submit_solution', slug=book.slug) }}" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Select File (PDF, PNG, JPG, JPEG)</label>
+                            <input type="file" name="solution_file" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
+                        </div>
+                        <div class="col-md-4 mb-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-upload"></i> Upload Solution
+                            </button>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        Selected exercises: <span id="selected-count">0</span>
+                    </small>
+                    
+                    <!-- Chapters and Exercises -->
+                    <div class="mt-4">
+                        {% for chapter in chapters %}
+                        <div class="chapter-section mb-4">
+                            <h5 class="chapter-header" data-bs-toggle="collapse" data-bs-target="#chapter-{{ chapter.id }}" style="cursor: pointer;">
+                                <i class="bi bi-chevron-down"></i>
+                                Chapter {{ chapter.number }}: {{ chapter.title }}
+                                <span class="badge bg-secondary">{{ chapter.exercises.count() }} exercises</span>
+                            </h5>
+                            
+                            <div id="chapter-{{ chapter.id }}" class="collapse show">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 50px;">Select</th>
+                                                <th>Exercise</th>
+                                                <th>Difficulty</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for exercise in chapter.exercises %}
+                                            <tr {% if exercise.id in submission_dict %}class="table-success"{% endif %}>
+                                                <td>
+                                                    <input type="checkbox" 
+                                                           name="exercises" 
+                                                           value="{{ exercise.id }}"
+                                                           class="form-check-input exercise-checkbox"
+                                                           {% if exercise.id in submission_dict %}disabled{% endif %}>
+                                                </td>
+                                                <td>
+                                                    <strong>{{ chapter.number }}.{{ exercise.number }}</strong>
+                                                </td>
+                                                <td>
+                                                    {% if exercise.difficulty %}
+                                                        {% if exercise.difficulty == 'easy' %}
+                                                            <span class="badge bg-success">Easy</span>
+                                                        {% elif exercise.difficulty == 'medium' %}
+                                                            <span class="badge bg-warning text-dark">Medium</span>
+                                                        {% elif exercise.difficulty == 'hard' %}
+                                                            <span class="badge bg-danger">Hard</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if exercise.id in submission_dict %}
+                                                        <span class="badge bg-success">
+                                                            <i class="bi bi-check-circle"></i> Completed
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Not Started</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if exercise.id in submission_dict %}
+                                                        <a href="{{ url_for('uploaded_file', filename=submission_dict[exercise.id].filename) }}" 
+                                                           class="btn btn-sm btn-outline-primary" 
+                                                           target="_blank">
+                                                            <i class="bi bi-file-earmark"></i> View
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted">-</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Update selected count
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkboxes = document.querySelectorAll('.exercise-checkbox');
+        const countSpan = document.getElementById('selected-count');
+        
+        function updateCount() {
+            const checked = document.querySelectorAll('.exercise-checkbox:checked').length;
+            countSpan.textContent = checked;
+        }
+        
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateCount);
+        });
+        
+        // Collapse/expand icon toggle
+        document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(header => {
+            header.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                icon.classList.toggle('bi-chevron-down');
+                icon.classList.toggle('bi-chevron-right');
+            });
+        });
+    });
+</script>
+{% endblock %}
