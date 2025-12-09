@@ -219,11 +219,16 @@ footer {
 
 /* Plan cards */
 .plan-card {
-    transition: transform 0.2s;
+    transition: all 0.2s ease;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin: -0.75rem;
 }
 
 .plan-card:hover {
+    background-color: rgba(13, 110, 253, 0.05);
     transform: translateX(5px);
+    cursor: pointer;
 }
 
 /* Stats display */
