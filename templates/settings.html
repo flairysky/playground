@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="bi bi-gear"></i> Settings</h2>
+            <p class="text-muted">Manage your privacy and account settings</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Privacy Settings</h5>
+                    <hr>
+                    <form method="POST">
+                        <div class="mb-4">
+                            <h6 class="text-primary"><i class="bi bi-shield-lock"></i> Profile Visibility</h6>
+                            <p class="text-muted small">Control what other users can see on your profile</p>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="public_profile" name="public_profile" 
+                                       {% if current_user.public_profile %}checked{% endif %}>
+                                <label class="form-check-label" for="public_profile">
+                                    <strong>Public Profile</strong>
+                                    <br>
+                                    <small class="text-muted">Allow others to view your profile page</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="public_stats" name="public_stats" 
+                                       {% if current_user.public_stats %}checked{% endif %}>
+                                <label class="form-check-label" for="public_stats">
+                                    <strong>Public Statistics</strong>
+                                    <br>
+                                    <small class="text-muted">Show your exercise stats, streaks, and progress on your profile</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="public_activity" name="public_activity" 
+                                       {% if current_user.public_activity %}checked{% endif %}>
+                                <label class="form-check-label" for="public_activity">
+                                    <strong>Public Activity</strong>
+                                    <br>
+                                    <small class="text-muted">Show your activity calendar and badges on your profile</small>
+                                </label>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="public_uploads" name="public_uploads" 
+                                       {% if current_user.public_uploads %}checked{% endif %}>
+                                <label class="form-check-label" for="public_uploads">
+                                    <strong>Public Uploads</strong>
+                                    <br>
+                                    <small class="text-muted">Allow others to see your uploaded solutions</small>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> 
+                            <strong>Note:</strong> Even with a private profile, your username and rank will still appear on the leaderboard.
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Save Settings
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-4">
+                <div class="card-body">
+                    <h5 class="card-title">Account Information</h5>
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Username:</strong></div>
+                        <div class="col-sm-8">{{ current_user.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Email:</strong></div>
+                        <div class="col-sm-8">{{ current_user.email }}</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-4"><strong>Member Since:</strong></div>
+                        <div class="col-sm-8">{{ current_user.date_joined.strftime('%B %d, %Y') }}</div>
+                    </div>
+                    <hr>
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-lock"></i> Your email and member since date are private and never shared with other users.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            <div class="card shadow-sm bg-light">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-eye"></i> Preview Your Profile</h6>
+                    <p class="small text-muted">See how others view your profile</p>
+                    <a href="{{ url_for('user_profile', username=current_user.username) }}" class="btn btn-outline-primary btn-sm w-100">
+                        <i class="bi bi-person-circle"></i> View My Profile
+                    </a>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mt-3">
+                <div class="card-body">
+                    <h6 class="card-title"><i class="bi bi-question-circle"></i> Privacy Tips</h6>
+                    <ul class="small text-muted mb-0">
+                        <li>Enable public stats to share your progress with friends</li>
+                        <li>Keep uploads private if you're still working on solutions</li>
+                        <li>Activity calendar helps others see your consistency</li>
+                        <li>You can change these settings anytime</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

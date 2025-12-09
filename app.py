@@ -581,6 +581,114 @@ def create_app(config_class=Config):
         
         return render_template('my_uploads.html', uploads=uploads_list)
     
+    @app.route('/profile/<username>')
+    @login_required
+    def user_profile(username):
+        """View user profile page."""
+        from datetime import datetime, timedelta
+        
+        user = User.query.filter_by(username=username).first_or_404()
+        
+        # Check if profile is public or if viewing own profile
+        if not user.public_profile and user.id != current_user.id:
+            flash('This profile is private.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        # Get user stats if public or own profile
+        stats_visible = user.public_stats or user.id == current_user.id
+        activity_visible = user.public_activity or user.id == current_user.id
+        uploads_visible = user.public_uploads or user.id == current_user.id
+        
+        user_data = {
+            'username': user.username,
+            'date_joined': user.date_joined,
+            'stats_visible': stats_visible,
+            'activity_visible': activity_visible,
+            'uploads_visible': uploads_visible
+        }
+        
+        if stats_visible:
+            # Calculate statistics
+            today = datetime.now().date()
+            week_start = today - timedelta(days=today.weekday())
+            month_start = today.replace(day=1)
+            year_start = today.replace(month=1, day=1)
+            
+            week_submissions = Submission.query.filter(
+                Submission.user_id == user.id,
+                Submission.created_at >= week_start
+            ).count()
+            
+            month_submissions = Submission.query.filter(
+                Submission.user_id == user.id,
+                Submission.created_at >= month_start
+            ).count()
+            
+            year_submissions = Submission.query.filter(
+                Submission.user_id == user.id,
+                Submission.created_at >= year_start
+            ).count()
+            
+            # Calculate weekly average
+            weeks_active = max(1, (datetime.now().date() - user.date_joined.date()).days // 7)
+            total_exercises = user.get_total_exercises_completed()
+            weekly_average = round(total_exercises / weeks_active, 1)
+            
+            user_data['stats'] = {
+                'total_exercises': total_exercises,
+                'streak_days': user.streak_days,
+                'longest_streak': user.longest_streak,
+                'week': week_submissions,
+                'month': month_submissions,
+                'year': year_submissions,
+                'weekly_average': weekly_average
+            }
+        
+        if activity_visible:
+            # Get activity calendar
+            user_data['activity_calendar'] = get_activity_calendar(user)
+            
+            # Get badges
+            user_data['badges'] = get_user_badges(user)
+        
+        if uploads_visible:
+            # Get user uploads
+            submissions = Submission.query.filter_by(user_id=user.id)\
+                .join(Exercise).join(Chapter).join(Book)\
+                .order_by(Submission.created_at.desc()).all()
+            
+            uploads = {}
+            for sub in submissions:
+                if sub.filename not in uploads:
+                    uploads[sub.filename] = {
+                        'filename': sub.filename,
+                        'created_at': sub.created_at,
+                        'book': sub.exercise.chapter.book.title,
+                        'exercises': []
+                    }
+                uploads[sub.filename]['exercises'].append(sub.exercise)
+            
+            user_data['uploads'] = sorted(uploads.values(), key=lambda x: x['created_at'], reverse=True)
+        
+        return render_template('profile.html', user=user_data, profile_user=user, is_own_profile=(user.id == current_user.id))
+    
+    @app.route('/settings', methods=['GET', 'POST'])
+    @login_required
+    def settings():
+        """User settings page."""
+        if request.method == 'POST':
+            # Update privacy settings
+            current_user.public_profile = 'public_profile' in request.form
+            current_user.public_stats = 'public_stats' in request.form
+            current_user.public_uploads = 'public_uploads' in request.form
+            current_user.public_activity = 'public_activity' in request.form
+            
+            db.session.commit()
+            flash('Settings updated successfully!', 'success')
+            return redirect(url_for('settings'))
+        
+        return render_template('settings.html')
+    
     return app
 
 

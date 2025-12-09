@@ -83,7 +83,9 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <strong>{{ entry.user.username }}</strong>
+                                    <a href="{{ url_for('user_profile', username=entry.user.username) }}" class="text-decoration-none">
+                                        <strong>{{ entry.user.username }}</strong>
+                                    </a>
                                     {% if entry.user.id == current_user.id %}
                                         <span class="badge bg-info">You</span>
                                     {% endif %}

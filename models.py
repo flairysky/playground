@@ -19,6 +19,12 @@ class User(UserMixin, db.Model):
     streak_days = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
     
+    # Privacy settings
+    public_profile = db.Column(db.Boolean, default=True)
+    public_stats = db.Column(db.Boolean, default=True)
+    public_uploads = db.Column(db.Boolean, default=False)
+    public_activity = db.Column(db.Boolean, default=True)
+    
     # Relationships
     submissions = db.relationship('Submission', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     weekly_plans = db.relationship('WeeklyPlan', backref='user', lazy='dynamic', cascade='all, delete-orphan')
