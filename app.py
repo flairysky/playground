@@ -510,8 +510,8 @@ def create_app(config_class=Config):
         """Create and view weekly plans."""
         form = WeeklyPlanForm()
         
-        # Populate book choices
-        books = Book.query.all()
+        # Populate book choices - keep it simple for the form
+        books = Book.query.order_by(Book.title).all()
         form.book_id.choices = [(0, 'Select a book')] + [(book.id, book.title) for book in books]
         
         # Populate chapter choices (will be all chapters for now)
@@ -598,7 +598,7 @@ def create_app(config_class=Config):
         plans = WeeklyPlan.query.filter_by(user_id=current_user.id)\
             .order_by(WeeklyPlan.start_date.desc()).all()
         
-        return render_template('weekly_plan.html', form=form, plans=plans)
+        return render_template('weekly_plan.html', form=form, plans=plans, books=books)
     
     @app.route('/uploads/<filename>')
     @login_required

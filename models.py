@@ -116,6 +116,7 @@ class Book(db.Model):
     author = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
     category = db.Column(db.String(50), default='undergraduate')  # high_school, undergraduate, graduate
+    topic = db.Column(db.String(100), default='algebra')  # algebra, analysis, geometry_topology, logic, applied_mathematics
     
     # Relationships
     chapters = db.relationship('Chapter', backref='book', lazy='dynamic', 

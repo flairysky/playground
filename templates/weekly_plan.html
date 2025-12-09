@@ -30,14 +30,46 @@
                     
                     <div class="mb-3">
                         {{ form.book_id.label(class="form-label") }}
-                        {{ form.book_id(class="form-select" + (" is-invalid" if form.book_id.errors else "")) }}
+                        
+                        <!-- Search and Filter -->
+                        <div class="mb-2">
+                            <input type="text" id="bookSearch" class="form-control form-control-sm" placeholder="🔍 Search by title or author...">
+                        </div>
+                        
+                        <div class="mb-2">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary topic-filter active" data-topic="all">All Topics</button>
+                                <button type="button" class="btn btn-outline-secondary topic-filter" data-topic="algebra">Algebra</button>
+                                <button type="button" class="btn btn-outline-secondary topic-filter" data-topic="analysis">Analysis</button>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary topic-filter" data-topic="geometry_topology">Geometry/Topology</button>
+                                <button type="button" class="btn btn-outline-secondary topic-filter" data-topic="logic">Logic</button>
+                                <button type="button" class="btn btn-outline-secondary topic-filter" data-topic="applied_mathematics">Applied Math</button>
+                            </div>
+                        </div>
+                        
+                        <select id="bookSelect" class="form-select" size="8" style="font-size: 0.9rem;">
+                            <option value="" disabled selected>Select a book</option>
+                            {% for book in books %}
+                                <option value="{{ book.id }}" data-title="{{ book.title }}" data-author="{{ book.author }}" data-topic="{{ book.topic or 'algebra' }}">
+                                    {{ book.title }} - {{ book.author }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {{ form.book_id(style="display: none;") }}
+                        
                         {% if form.book_id.errors %}
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.book_id.errors %}
                                     {{ error }}
                                 {% endfor %}
                             </div>
                         {% endif %}
+                        
+                        <small class="text-muted">Browse alphabetically or use search/filters above</small>
                     </div>
                     
                     <div class="mb-3">
@@ -271,6 +303,84 @@
         
         // Initialize on page load
         updateVisibility();
+        
+        // Book search and filter functionality
+        const bookSelect = document.getElementById('bookSelect');
+        const bookHiddenInput = document.getElementById('book_id');
+        const bookSearch = document.getElementById('bookSearch');
+        const topicFilters = document.querySelectorAll('.topic-filter');
+        
+        let currentTopic = 'all';
+        let searchTerm = '';
+        
+        // Store all options
+        const allOptions = Array.from(bookSelect.options).slice(1); // Skip first "Select a book" option
+        
+        // Update visible options based on filters
+        function filterBooks() {
+            // Clear current options except the first one
+            while (bookSelect.options.length > 1) {
+                bookSelect.remove(1);
+            }
+            
+            // Filter and add matching options
+            const filteredOptions = allOptions.filter(option => {
+                const title = option.dataset.title.toLowerCase();
+                const author = option.dataset.author.toLowerCase();
+                const topic = option.dataset.topic;
+                
+                const matchesTopic = currentTopic === 'all' || topic === currentTopic;
+                const matchesSearch = searchTerm === '' || 
+                                    title.includes(searchTerm) || 
+                                    author.includes(searchTerm);
+                
+                return matchesTopic && matchesSearch;
+            });
+            
+            // Sort alphabetically by title
+            filteredOptions.sort((a, b) => {
+                return a.dataset.title.localeCompare(b.dataset.title);
+            });
+            
+            // Add filtered options
+            filteredOptions.forEach(option => {
+                bookSelect.add(option.cloneNode(true));
+            });
+            
+            // Show count
+            if (filteredOptions.length === 0) {
+                const noResults = new Option('No books found', '');
+                noResults.disabled = true;
+                bookSelect.add(noResults);
+            }
+        }
+        
+        // Search input handler
+        bookSearch.addEventListener('input', function() {
+            searchTerm = this.value.toLowerCase().trim();
+            filterBooks();
+        });
+        
+        // Topic filter handlers
+        topicFilters.forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active state
+                topicFilters.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update filter
+                currentTopic = this.dataset.topic;
+                filterBooks();
+            });
+        });
+        
+        // Sync visible select with hidden input
+        bookSelect.addEventListener('change', function() {
+            bookHiddenInput.value = this.value;
+        });
+        
+        // Initialize
+        filterBooks();
     });
 </script>
 {% endblock %}
