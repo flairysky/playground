@@ -598,7 +598,10 @@ def create_app(config_class=Config):
         plans = WeeklyPlan.query.filter_by(user_id=current_user.id)\
             .order_by(WeeklyPlan.start_date.desc()).all()
         
-        return render_template('weekly_plan.html', form=form, plans=plans, books=books)
+        # Get all chapters for filtering in template
+        all_chapters = Chapter.query.order_by(Chapter.book_id, Chapter.number).all()
+        
+        return render_template('weekly_plan.html', form=form, plans=plans, books=books, all_chapters=all_chapters)
     
     @app.route('/uploads/<filename>')
     @login_required

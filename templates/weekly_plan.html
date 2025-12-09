@@ -73,23 +73,34 @@
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Plan Mode</label>
+                        <label class="form-label">
+                            Plan Mode 
+                            <i class="bi bi-info-circle text-muted" 
+                               data-bs-toggle="tooltip" 
+                               data-bs-placement="right" 
+                               data-bs-html="true"
+                               title="<strong>Chapterwise:</strong> Complete one full chapter per week, auto-advances to next chapter<br><br><strong>Subchapterwise:</strong> Complete full subchapters per week, auto-advances through subchapters<br><br><strong>Own Pace:</strong> Specify custom exercises each week"
+                               style="cursor: help;">
+                            </i>
+                        </label>
                         {% for subfield in form.plan_mode %}
                             <div class="form-check">
                                 {{ subfield(class="form-check-input plan-mode-radio") }}
                                 {{ subfield.label(class="form-check-label") }}
                             </div>
                         {% endfor %}
-                        <small class="form-text text-muted">
-                            • <strong>Chapterwise:</strong> Complete one full chapter per week, auto-advances<br>
-                            • <strong>Subchapterwise:</strong> Same as chapterwise but allows partial completion<br>
-                            • <strong>Own Pace:</strong> Specify custom exercises each week
-                        </small>
                     </div>
                     
                     <div class="mb-3" id="chapterSelection">
                         {{ form.start_chapter.label(class="form-label") }}
-                        {{ form.start_chapter(class="form-select") }}
+                        <select id="chapterSelect" name="start_chapter" class="form-select">
+                            <option value="0">Select starting chapter</option>
+                            {% for chapter in all_chapters %}
+                                <option value="{{ chapter.id }}" data-book-id="{{ chapter.book_id }}">
+                                    {{ chapter.book.title }} - Ch {{ chapter.number }}: {{ chapter.title }}
+                                </option>
+                            {% endfor %}
+                        </select>
                         <small class="form-text text-muted">Choose the chapter to start with. Plan will auto-progress to next chapters.</small>
                     </div>
                     
@@ -374,9 +385,49 @@
             });
         });
         
-        // Sync visible select with hidden input
+        // Sync visible select with hidden input and filter chapters
         bookSelect.addEventListener('change', function() {
             bookHiddenInput.value = this.value;
+            filterChaptersByBook(this.value);
+        });
+        
+        // Chapter filtering based on selected book
+        const chapterSelect = document.getElementById('chapterSelect');
+        const allChapterOptions = Array.from(chapterSelect.options).slice(1); // Skip first "Select starting chapter"
+        
+        function filterChaptersByBook(bookId) {
+            // Clear current options except the first one
+            while (chapterSelect.options.length > 1) {
+                chapterSelect.remove(1);
+            }
+            
+            if (!bookId || bookId === '0' || bookId === '') {
+                // No book selected, show all chapters
+                allChapterOptions.forEach(option => {
+                    chapterSelect.add(option.cloneNode(true));
+                });
+            } else {
+                // Filter chapters by selected book
+                const filteredChapters = allChapterOptions.filter(option => {
+                    return option.dataset.bookId === bookId;
+                });
+                
+                filteredChapters.forEach(option => {
+                    chapterSelect.add(option.cloneNode(true));
+                });
+                
+                if (filteredChapters.length === 0) {
+                    const noChapters = new Option('No chapters available for this book', '0');
+                    noChapters.disabled = true;
+                    chapterSelect.add(noChapters);
+                }
+            }
+        }
+        
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle=\"tooltip\"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
         });
         
         // Initialize
