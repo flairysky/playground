@@ -506,10 +506,11 @@ def create_app(config_class=Config):
             # Mark as complete and award points with chapter multiplier
             # Base points for reading sections: 25
             # Chapter multiplier: 5% increase per chapter
+            import math
             base_reading_points = 25
             chapter_number = chapter.number
             chapter_multiplier = 1 + (0.05 * (chapter_number - 1))
-            reading_points = int(round(base_reading_points * chapter_multiplier))
+            reading_points = math.ceil(base_reading_points * chapter_multiplier)
             
             reading_completion = ReadingSection(
                 user_id=current_user.id,

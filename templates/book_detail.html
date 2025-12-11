@@ -82,15 +82,37 @@
                                     {% set _ = exercises_by_section[section].append(exercise) %}
                                 {% endfor %}
                                 
-                                {% set section_names = {
-                                    1: 'Definition',
-                                    2: 'Polar Form',
-                                    3: 'Complex Valued Functions',
-                                    4: 'Limits and Compact Sets',
-                                    5: 'Complex Differentiability',
-                                    6: 'The Cauchy-Riemann Equations',
-                                    7: 'Angles Under Holomorphic Maps'
-                                } %}
+                                {% if chapter.number == 1 %}
+                                    {% set section_names = {
+                                        1: 'Definition',
+                                        2: 'Polar Form',
+                                        3: 'Complex Valued Functions',
+                                        4: 'Limits and Compact Sets',
+                                        5: 'Complex Differentiability',
+                                        6: 'The Cauchy-Riemann Equations',
+                                        7: 'Angles Under Holomorphic Maps'
+                                    } %}
+                                {% elif chapter.number == 2 %}
+                                    {% set section_names = {
+                                        1: 'Formal Power Series',
+                                        2: 'Convergent Power Series',
+                                        3: 'Relations Between Formal and Convergent Series',
+                                        4: 'Analytic Functions',
+                                        5: 'Differentiation of Power Series',
+                                        6: 'The Inverse and Open Mapping Theorems',
+                                        7: 'The Local Maximum Modulus Principle'
+                                    } %}
+                                {% else %}
+                                    {% set section_names = {
+                                        1: 'Section 1',
+                                        2: 'Section 2',
+                                        3: 'Section 3',
+                                        4: 'Section 4',
+                                        5: 'Section 5',
+                                        6: 'Section 6',
+                                        7: 'Section 7'
+                                    } %}
+                                {% endif %}
                                 
                                 {% for section_num in range(1, 8) %}
                                     {% set section_exercises = exercises_by_section.get(section_num, []) %}
@@ -156,7 +178,7 @@
                                                                value="{{ exercise.id }}"
                                                                class="form-check-input exercise-checkbox section-{{ section_num }}-exercise"
                                                                data-section="{{ section_num }}"
-                                                               {% if exercise.id in submission_dict %}disabled{% endif %}>
+                                                               {% if exercise.id in submission_dict %}checked disabled{% endif %}>
                                                     </td>
                                                     <td>
                                                         <strong>{{ exercise.get_display_number() }}</strong>
