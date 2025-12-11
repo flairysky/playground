@@ -256,16 +256,18 @@
             const sectionCheckbox = document.querySelector(`.section-checkbox[data-chapter="${chapterId}"][data-section="${sectionNum}"]`);
             if (!sectionCheckbox) return;
             
-            const sectionExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise:not(:disabled)`);
+            // Get all exercises in this section (including disabled/completed ones)
+            const allSectionExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise`);
             const checkedExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise:checked`);
             
-            if (sectionExercises.length === 0) {
+            if (allSectionExercises.length === 0) {
                 sectionCheckbox.checked = false;
                 sectionCheckbox.indeterminate = false;
             } else if (checkedExercises.length === 0) {
                 sectionCheckbox.checked = false;
                 sectionCheckbox.indeterminate = false;
-            } else if (checkedExercises.length === sectionExercises.length) {
+            } else if (checkedExercises.length === allSectionExercises.length) {
+                // All exercises in section are checked (completed)
                 sectionCheckbox.checked = true;
                 sectionCheckbox.indeterminate = false;
             } else {

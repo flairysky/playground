@@ -380,6 +380,8 @@ def create_app(config_class=Config):
         total_points_earned = 0
         today = date.today()
         
+        # First, collect valid exercises and check which are new
+        exercises_to_submit = []
         for ex_id in exercise_ids:
             exercise = Exercise.query.get(int(ex_id))
             if exercise:
@@ -390,58 +392,89 @@ def create_app(config_class=Config):
                 ).first()
                 
                 if not existing:
-                    # Check if this is last exercise in section
-                    is_last_in_section = False
-                    if exercise.section:
-                        section_exercises = Exercise.query.filter_by(
-                            chapter_id=exercise.chapter_id,
-                            section=exercise.section
-                        ).order_by(Exercise.number.desc()).first()
-                        is_last_in_section = (section_exercises and section_exercises.id == exercise.id)
-                    
-                    # Check if section is complete after this submission
-                    is_section_complete = False
-                    if exercise.section:
-                        section_exercises = Exercise.query.filter_by(
-                            chapter_id=exercise.chapter_id,
-                            section=exercise.section
-                        ).all()
-                        completed_in_section = Submission.query.join(Exercise).filter(
-                            Submission.user_id == current_user.id,
-                            Exercise.chapter_id == exercise.chapter_id,
-                            Exercise.section == exercise.section
-                        ).count()
-                        # Will be complete after this submission
-                        is_section_complete = (completed_in_section + 1 == len(section_exercises))
-                    
-                    # Check if chapter is complete after this submission
-                    is_chapter_complete = False
-                    chapter_exercises = Exercise.query.filter_by(
-                        chapter_id=exercise.chapter_id
-                    ).all()
-                    completed_in_chapter = Submission.query.join(Exercise).filter(
-                        Submission.user_id == current_user.id,
-                        Exercise.chapter_id == exercise.chapter_id
-                    ).count()
-                    # Will be complete after this submission
-                    is_chapter_complete = (completed_in_chapter + 1 == len(chapter_exercises))
-                    
-                    # Calculate points
-                    points = exercise.calculate_points(
-                        is_last_in_section=is_last_in_section,
-                        is_section_complete=is_section_complete,
-                        is_chapter_complete=is_chapter_complete
-                    )
-                    
-                    submission = Submission(
-                        user_id=current_user.id,
-                        exercise_id=exercise.id,
-                        filename=new_filename,
-                        points_earned=points
-                    )
-                    db.session.add(submission)
-                    submission_count += 1
-                    total_points_earned += points
+                    exercises_to_submit.append(exercise)
+        
+        # Group exercises by section and chapter to detect completions
+        sections_completing = set()  # Set of (chapter_id, section) tuples
+        chapters_completing = set()  # Set of chapter_ids
+        
+        for exercise in exercises_to_submit:
+            # Check section completion
+            if exercise.section:
+                section_key = (exercise.chapter_id, exercise.section)
+                section_exercises = Exercise.query.filter_by(
+                    chapter_id=exercise.chapter_id,
+                    section=exercise.section
+                ).all()
+                
+                # Count already completed in this section
+                completed_in_section = Submission.query.join(Exercise).filter(
+                    Submission.user_id == current_user.id,
+                    Exercise.chapter_id == exercise.chapter_id,
+                    Exercise.section == exercise.section
+                ).count()
+                
+                # Count how many from this batch are in this section
+                batch_in_section = sum(1 for e in exercises_to_submit 
+                                      if e.chapter_id == exercise.chapter_id and e.section == exercise.section)
+                
+                # Will complete after this batch?
+                if completed_in_section + batch_in_section == len(section_exercises):
+                    sections_completing.add(section_key)
+            
+            # Check chapter completion
+            chapter_exercises = Exercise.query.filter_by(
+                chapter_id=exercise.chapter_id
+            ).all()
+            
+            completed_in_chapter = Submission.query.join(Exercise).filter(
+                Submission.user_id == current_user.id,
+                Exercise.chapter_id == exercise.chapter_id
+            ).count()
+            
+            # Count how many from this batch are in this chapter
+            batch_in_chapter = sum(1 for e in exercises_to_submit if e.chapter_id == exercise.chapter_id)
+            
+            # Will complete after this batch?
+            if completed_in_chapter + batch_in_chapter == len(chapter_exercises):
+                chapters_completing.add(exercise.chapter_id)
+        
+        # Now process each exercise with correct completion flags
+        for exercise in exercises_to_submit:
+            # Check if this is last exercise in section (by number)
+            is_last_in_section = False
+            if exercise.section:
+                section_exercises = Exercise.query.filter_by(
+                    chapter_id=exercise.chapter_id,
+                    section=exercise.section
+                ).order_by(Exercise.number.desc()).first()
+                is_last_in_section = (section_exercises and section_exercises.id == exercise.id)
+            
+            # Check if section will be complete with this batch
+            is_section_complete = False
+            if exercise.section:
+                section_key = (exercise.chapter_id, exercise.section)
+                is_section_complete = section_key in sections_completing
+            
+            # Check if chapter will be complete with this batch
+            is_chapter_complete = exercise.chapter_id in chapters_completing
+            
+            # Calculate points
+            points = exercise.calculate_points(
+                is_last_in_section=is_last_in_section,
+                is_section_complete=is_section_complete,
+                is_chapter_complete=is_chapter_complete
+            )
+            
+            submission = Submission(
+                user_id=current_user.id,
+                exercise_id=exercise.id,
+                filename=new_filename,
+                points_earned=points
+            )
+            db.session.add(submission)
+            submission_count += 1
+            total_points_earned += points
         
         # Update user's total points
         if not current_user.total_points:
