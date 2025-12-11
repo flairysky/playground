@@ -102,6 +102,53 @@ def create_app(config_class=Config):
         
         return badges
     
+    def update_weekly_plans_on_completion(user_id, book_id):
+        """Check if any chapter is completed and update weekly plans to next chapter."""
+        import json
+        
+        # Get active weekly plans for this user and book
+        active_plans = WeeklyPlan.query.filter_by(
+            user_id=user_id,
+            book_id=book_id,
+            completed=False
+        ).filter(WeeklyPlan.end_date >= date.today()).all()
+        
+        for plan in active_plans:
+            # Only auto-progress for chapterwise and subchapterwise plans
+            if plan.plan_mode not in ['chapterwise', 'subchapterwise']:
+                continue
+            
+            # Check if current chapter is 100% complete
+            if plan.chapter_id and plan.get_progress() >= 100:
+                # Find next chapter
+                current_chapter = Chapter.query.get(plan.chapter_id)
+                if current_chapter:
+                    next_chapter = Chapter.query.filter_by(
+                        book_id=book_id,
+                        number=current_chapter.number + 1
+                    ).first()
+                    
+                    if next_chapter:
+                        # Update plan to next chapter
+                        plan.chapter_id = next_chapter.id
+                        plan.current_chapter_number = next_chapter.number
+                        
+                        # Update target exercises to next chapter's exercises
+                        if plan.plan_mode == 'chapterwise':
+                            # All exercises in next chapter
+                            next_exercises = Exercise.query.filter_by(chapter_id=next_chapter.id).all()
+                            exercise_ids = [ex.id for ex in next_exercises]
+                            plan.target_exercises = json.dumps(exercise_ids)
+                        elif plan.plan_mode == 'subchapterwise':
+                            # First section of next chapter
+                            next_exercises = Exercise.query.filter_by(
+                                chapter_id=next_chapter.id,
+                                section=1
+                            ).all()
+                            if next_exercises:
+                                exercise_ids = [ex.id for ex in next_exercises]
+                                plan.target_exercises = json.dumps(exercise_ids)
+    
     def get_activity_calendar(user, days=60):
         """Generate activity calendar data for the last N days."""
         today = date.today()
@@ -218,6 +265,11 @@ def create_app(config_class=Config):
         user_book_ids = db.session.query(WeeklyPlan.book_id.distinct())\
             .filter(WeeklyPlan.user_id == current_user.id).all()
         user_book_ids = [book_id[0] for book_id in user_book_ids]
+        
+        # Update weekly plans if any chapters are completed
+        for book_id in user_book_ids:
+            update_weekly_plans_on_completion(current_user.id, book_id)
+        db.session.commit()
         
         books = Book.query.filter(Book.id.in_(user_book_ids)).all() if user_book_ids else []
         book_data = []
@@ -499,6 +551,9 @@ def create_app(config_class=Config):
         
         # Update streak
         current_user.update_streak(today)
+        
+        # Check and update weekly plans if chapter is completed
+        update_weekly_plans_on_completion(current_user.id, book.id)
         
         db.session.commit()
         
