@@ -323,10 +323,21 @@ def create_app(config_class=Config):
         for sub in submissions:
             submission_dict[sub.exercise_id] = sub
         
+        # Get user's completed reading sections for this book
+        from models import ReadingSection
+        reading_sections_completed = {}
+        reading_completions = ReadingSection.query.join(Chapter)\
+            .filter(ReadingSection.user_id == current_user.id, Chapter.book_id == book.id).all()
+        
+        for reading in reading_completions:
+            key = f"{reading.chapter_id}_{reading.section}"
+            reading_sections_completed[key] = reading
+        
         return render_template('book_detail.html',
                              book=book,
                              chapters=chapters,
-                             submission_dict=submission_dict)
+                             submission_dict=submission_dict,
+                             reading_sections_completed=reading_sections_completed)
     
     @app.route('/books/<slug>/submit', methods=['POST'])
     @login_required
@@ -366,6 +377,7 @@ def create_app(config_class=Config):
         
         # Create submissions for each selected exercise
         submission_count = 0
+        total_points_earned = 0
         today = date.today()
         
         for ex_id in exercise_ids:
@@ -378,13 +390,63 @@ def create_app(config_class=Config):
                 ).first()
                 
                 if not existing:
+                    # Check if this is last exercise in section
+                    is_last_in_section = False
+                    if exercise.section:
+                        section_exercises = Exercise.query.filter_by(
+                            chapter_id=exercise.chapter_id,
+                            section=exercise.section
+                        ).order_by(Exercise.number.desc()).first()
+                        is_last_in_section = (section_exercises and section_exercises.id == exercise.id)
+                    
+                    # Check if section is complete after this submission
+                    is_section_complete = False
+                    if exercise.section:
+                        section_exercises = Exercise.query.filter_by(
+                            chapter_id=exercise.chapter_id,
+                            section=exercise.section
+                        ).all()
+                        completed_in_section = Submission.query.join(Exercise).filter(
+                            Submission.user_id == current_user.id,
+                            Exercise.chapter_id == exercise.chapter_id,
+                            Exercise.section == exercise.section
+                        ).count()
+                        # Will be complete after this submission
+                        is_section_complete = (completed_in_section + 1 == len(section_exercises))
+                    
+                    # Check if chapter is complete after this submission
+                    is_chapter_complete = False
+                    chapter_exercises = Exercise.query.filter_by(
+                        chapter_id=exercise.chapter_id
+                    ).all()
+                    completed_in_chapter = Submission.query.join(Exercise).filter(
+                        Submission.user_id == current_user.id,
+                        Exercise.chapter_id == exercise.chapter_id
+                    ).count()
+                    # Will be complete after this submission
+                    is_chapter_complete = (completed_in_chapter + 1 == len(chapter_exercises))
+                    
+                    # Calculate points
+                    points = exercise.calculate_points(
+                        is_last_in_section=is_last_in_section,
+                        is_section_complete=is_section_complete,
+                        is_chapter_complete=is_chapter_complete
+                    )
+                    
                     submission = Submission(
                         user_id=current_user.id,
                         exercise_id=exercise.id,
-                        filename=new_filename
+                        filename=new_filename,
+                        points_earned=points
                     )
                     db.session.add(submission)
                     submission_count += 1
+                    total_points_earned += points
+        
+        # Update user's total points
+        if not current_user.total_points:
+            current_user.total_points = 0
+        current_user.total_points += total_points_earned
         
         # Update activity log for today
         activity = ActivityLog.query.filter_by(
@@ -407,12 +469,68 @@ def create_app(config_class=Config):
         
         db.session.commit()
         
-        flash(f'Successfully submitted solution for {submission_count} exercise(s)!', 'success')
+        if total_points_earned > 0:
+            flash(f'Successfully submitted solution for {submission_count} exercise(s)! You earned {total_points_earned} points!', 'success')
+        else:
+            flash(f'Successfully submitted solution for {submission_count} exercise(s)!', 'success')
+        return redirect(url_for('book_detail', slug=slug))
+    
+    @app.route('/books/<slug>/mark-reading/<int:chapter_id>/<int:section>', methods=['POST'])
+    @login_required
+    def mark_reading_complete(slug, chapter_id, section):
+        """Mark a reading-only section as complete and award points."""
+        from models import ReadingSection
+        
+        book = Book.query.filter_by(slug=slug).first_or_404()
+        chapter = Chapter.query.get_or_404(chapter_id)
+        
+        # Verify chapter belongs to book
+        if chapter.book_id != book.id:
+            flash('Invalid chapter', 'error')
+            return redirect(url_for('book_detail', slug=slug))
+        
+        # Check if already marked as complete
+        existing = ReadingSection.query.filter_by(
+            user_id=current_user.id,
+            chapter_id=chapter_id,
+            section=section
+        ).first()
+        
+        if existing:
+            # Already completed - unmark it
+            current_user.total_points -= existing.points_earned
+            db.session.delete(existing)
+            db.session.commit()
+            flash(f'Reading section unmarked. You lost {existing.points_earned} points.', 'info')
+        else:
+            # Mark as complete and award points with chapter multiplier
+            # Base points for reading sections: 25
+            # Chapter multiplier: 5% increase per chapter
+            base_reading_points = 25
+            chapter_number = chapter.number
+            chapter_multiplier = 1 + (0.05 * (chapter_number - 1))
+            reading_points = int(round(base_reading_points * chapter_multiplier))
+            
+            reading_completion = ReadingSection(
+                user_id=current_user.id,
+                chapter_id=chapter_id,
+                section=section,
+                points_earned=reading_points
+            )
+            
+            current_user.total_points = (current_user.total_points or 0) + reading_points
+            
+            db.session.add(reading_completion)
+            db.session.commit()
+            
+            flash(f'Reading section completed! You earned {reading_points} points!', 'success')
+        
         return redirect(url_for('book_detail', slug=slug))
     
     @app.route('/leaderboard')
     @login_required
     def leaderboard():
+
         """Global leaderboard."""
         from datetime import datetime, timedelta
         
@@ -471,6 +589,7 @@ def create_app(config_class=Config):
                 'user': user,
                 'display_name': user.get_display_name(),
                 'total_exercises': total_exercises,
+                'total_points': user.total_points or 0,
                 'streak': user.streak_days,
                 'longest_streak': user.longest_streak,
                 'week_exercises': week_submissions,
@@ -481,6 +600,8 @@ def create_app(config_class=Config):
         # Sort based on selected criteria
         if sort_by == 'total_exercises':
             leaderboard_data.sort(key=lambda x: x['total_exercises'], reverse=True)
+        elif sort_by == 'total_points':
+            leaderboard_data.sort(key=lambda x: x['total_points'], reverse=True)
         elif sort_by == 'streak':
             leaderboard_data.sort(key=lambda x: x['streak'], reverse=True)
         elif sort_by == 'longest_streak':

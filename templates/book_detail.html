@@ -61,75 +61,149 @@
                     <div class="mt-4">
                         {% for chapter in chapters %}
                         <div class="chapter-section mb-4">
+                            {% set chapter_total_points = chapter.exercises|sum(attribute='points') or 0 %}
+                            {% set chapter_multiplier = 1 + (0.05 * (chapter.number - 1)) %}
+                            {% set chapter_bonus = (100 * chapter_multiplier) | round | int %}
                             <h5 class="chapter-header" data-bs-toggle="collapse" data-bs-target="#chapter-{{ chapter.id }}" style="cursor: pointer;">
                                 <i class="bi bi-chevron-down"></i>
                                 Chapter {{ chapter.number }}: {{ chapter.title }}
                                 <span class="badge bg-secondary">{{ chapter.exercises.count() }} exercises</span>
+                                <span class="badge bg-success"><i class="bi bi-star-fill"></i> {{ chapter_total_points }} pts</span>
+                                <span class="badge bg-warning text-dark"><i class="bi bi-trophy-fill"></i> +{{ chapter_bonus }} pts bonus for completion</span>
                             </h5>
                             
                             <div id="chapter-{{ chapter.id }}" class="collapse show">
-                                <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th style="width: 50px;">Select</th>
-                                                <th>Exercise</th>
-                                                <th>Difficulty</th>
-                                                <th>Status</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for exercise in chapter.exercises %}
-                                            <tr {% if exercise.id in submission_dict %}class="table-success"{% endif %}>
-                                                <td>
-                                                    <input type="checkbox" 
-                                                           name="exercises" 
-                                                           value="{{ exercise.id }}"
-                                                           class="form-check-input exercise-checkbox"
-                                                           {% if exercise.id in submission_dict %}disabled{% endif %}>
-                                                </td>
-                                                <td>
-                                                    <strong>{{ chapter.number }}.{{ exercise.number }}</strong>
-                                                </td>
-                                                <td>
-                                                    {% if exercise.difficulty %}
-                                                        {% if exercise.difficulty == 'easy' %}
-                                                            <span class="badge bg-success">Easy</span>
-                                                        {% elif exercise.difficulty == 'medium' %}
-                                                            <span class="badge bg-warning text-dark">Medium</span>
-                                                        {% elif exercise.difficulty == 'hard' %}
-                                                            <span class="badge bg-danger">Hard</span>
+                                {% set exercises_by_section = {} %}
+                                {% for exercise in chapter.exercises %}
+                                    {% set section = exercise.section or 0 %}
+                                    {% if section not in exercises_by_section %}
+                                        {% set _ = exercises_by_section.update({section: []}) %}
+                                    {% endif %}
+                                    {% set _ = exercises_by_section[section].append(exercise) %}
+                                {% endfor %}
+                                
+                                {% set section_names = {
+                                    1: 'Definition',
+                                    2: 'Polar Form',
+                                    3: 'Complex Valued Functions',
+                                    4: 'Limits and Compact Sets',
+                                    5: 'Complex Differentiability',
+                                    6: 'The Cauchy-Riemann Equations',
+                                    7: 'Angles Under Holomorphic Maps'
+                                } %}
+                                
+                                {% for section_num in range(1, 8) %}
+                                    {% set section_exercises = exercises_by_section.get(section_num, []) %}
+                                    {% set reading_key = chapter.id|string + '_' + section_num|string %}
+                                    {% set is_reading_complete = reading_key in reading_sections_completed %}
+                                    {% set chapter_multiplier = 1 + (0.05 * (chapter.number - 1)) %}
+                                    {% set reading_points = (25 * chapter_multiplier) | round | int %}
+                                    
+                                    <!-- Section Header -->
+                                    {% set section_total_points = section_exercises|sum(attribute='points') or 0 %}
+                                    <div class="section-header mt-3 mb-2 p-3" style="background-color: #f8f9fa; border-left: 4px solid #0d6efd; border-radius: 4px;">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center">
+                                                <input type="checkbox" 
+                                                       class="form-check-input me-3 section-checkbox" 
+                                                       id="section-{{ chapter.id }}-{{ section_num }}"
+                                                       data-section="{{ section_num }}"
+                                                       style="width: 20px; height: 20px;">
+                                                <h6 class="mb-0">
+                                                    <strong>§{{ section_num }}. {{ section_names[section_num] }}</strong>
+                                                    <span class="badge bg-primary ms-2">{{ section_exercises|length }} exercises</span>
+                                                    {% if section_exercises|length == 0 %}
+                                                    <span class="badge bg-info ms-1">Reading only</span>
+                                                    <span class="badge bg-success ms-1"><i class="bi bi-star-fill"></i> {{ reading_points }} pts</span>
+                                                    {% else %}
+                                                    <span class="badge bg-success ms-1"><i class="bi bi-star-fill"></i> {{ section_total_points }} pts</span>
+                                                    <span class="badge bg-warning text-dark ms-1"><i class="bi bi-trophy-fill"></i> +{{ (50 * chapter_multiplier) | round | int }} pts bonus for completion</span>
+                                                    {% endif %}
+                                                </h6>
+                                            </div>
+                                            {% if section_exercises|length == 0 %}
+                                            <div>
+                                                <form method="POST" action="{{ url_for('mark_reading_complete', slug=book.slug, chapter_id=chapter.id, section=section_num) }}" style="display: inline;">
+                                                    <button type="submit" class="btn btn-sm {% if is_reading_complete %}btn-success{% else %}btn-outline-success{% endif %}">
+                                                        <i class="bi bi-{% if is_reading_complete %}check-circle-fill{% else %}circle{% endif %}"></i>
+                                                        {% if is_reading_complete %}Completed{% else %}Mark as Read{% endif %}
+                                                    </button>
+                                                </form>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    {% if section_exercises|length > 0 %}
+                                    <div class="table-responsive">
+                                        <table class="table table-hover table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th style="width: 50px;">Select</th>
+                                                    <th>Exercise</th>
+                                                    <th>Difficulty</th>
+                                                    <th>Points <small class="text-muted">(+{{ (15 * chapter_multiplier) | round | int }} for last in section)</small></th>
+                                                    <th>Status</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for exercise in section_exercises %}
+                                                <tr {% if exercise.id in submission_dict %}class="table-success"{% endif %}>
+                                                    <td>
+                                                        <input type="checkbox" 
+                                                               name="exercises" 
+                                                               value="{{ exercise.id }}"
+                                                               class="form-check-input exercise-checkbox section-{{ section_num }}-exercise"
+                                                               data-section="{{ section_num }}"
+                                                               {% if exercise.id in submission_dict %}disabled{% endif %}>
+                                                    </td>
+                                                    <td>
+                                                        <strong>{{ exercise.get_display_number() }}</strong>
+                                                    </td>
+                                                    <td>
+                                                        {% if exercise.difficulty %}
+                                                            {% if exercise.difficulty == 'easy' %}
+                                                                <span class="badge bg-success">Easy</span>
+                                                            {% elif exercise.difficulty == 'medium' %}
+                                                                <span class="badge bg-warning text-dark">Medium</span>
+                                                            {% elif exercise.difficulty == 'hard' %}
+                                                                <span class="badge bg-danger">Hard</span>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
                                                         {% endif %}
-                                                    {% else %}
-                                                        <span class="text-muted">-</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>
-                                                    {% if exercise.id in submission_dict %}
-                                                        <span class="badge bg-success">
-                                                            <i class="bi bi-check-circle"></i> Completed
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">Not Started</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>
-                                                    {% if exercise.id in submission_dict %}
-                                                        <a href="{{ url_for('uploaded_file', filename=submission_dict[exercise.id].filename) }}" 
-                                                           class="btn btn-sm btn-outline-primary" 
-                                                           target="_blank">
-                                                            <i class="bi bi-file-earmark"></i> View
-                                                        </a>
-                                                    {% else %}
-                                                        <span class="text-muted">-</span>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge bg-success"><i class="bi bi-star-fill"></i> {{ exercise.points or 0 }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {% if exercise.id in submission_dict %}
+                                                            <span class="badge bg-success">
+                                                                <i class="bi bi-check-circle"></i> Completed
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Not Started</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>
+                                                        {% if exercise.id in submission_dict %}
+                                                            <a href="{{ url_for('uploaded_file', filename=submission_dict[exercise.id].filename) }}" 
+                                                               class="btn btn-sm btn-outline-primary" 
+                                                               target="_blank">
+                                                                <i class="bi bi-file-earmark"></i> View
+                                                            </a>
+                                                        {% else %}
+                                                            <span class="text-muted">-</span>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% endif %}
+                                {% endfor %}
                             </div>
                         </div>
                         {% endfor %}
@@ -143,9 +217,10 @@
 
 {% block extra_js %}
 <script>
-    // Update selected count
+    // Update selected count and handle section checkboxes
     document.addEventListener('DOMContentLoaded', function() {
-        const checkboxes = document.querySelectorAll('.exercise-checkbox');
+        const exerciseCheckboxes = document.querySelectorAll('.exercise-checkbox');
+        const sectionCheckboxes = document.querySelectorAll('.section-checkbox');
         const countSpan = document.getElementById('selected-count');
         
         function updateCount() {
@@ -153,8 +228,56 @@
             countSpan.textContent = checked;
         }
         
-        checkboxes.forEach(cb => {
-            cb.addEventListener('change', updateCount);
+        function updateSectionCheckbox(sectionNum) {
+            const sectionCheckbox = document.querySelector(`.section-checkbox[data-section="${sectionNum}"]`);
+            if (!sectionCheckbox) return;
+            
+            const sectionExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:not(:disabled)`);
+            const checkedExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:checked`);
+            
+            if (sectionExercises.length === 0) {
+                sectionCheckbox.checked = false;
+                sectionCheckbox.indeterminate = false;
+            } else if (checkedExercises.length === 0) {
+                sectionCheckbox.checked = false;
+                sectionCheckbox.indeterminate = false;
+            } else if (checkedExercises.length === sectionExercises.length) {
+                sectionCheckbox.checked = true;
+                sectionCheckbox.indeterminate = false;
+            } else {
+                sectionCheckbox.checked = false;
+                sectionCheckbox.indeterminate = true;
+            }
+        }
+        
+        // Handle section checkbox changes
+        sectionCheckboxes.forEach(sectionCb => {
+            const sectionNum = sectionCb.dataset.section;
+            
+            sectionCb.addEventListener('change', function() {
+                const isChecked = this.checked;
+                const sectionExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:not(:disabled)`);
+                
+                sectionExercises.forEach(exerciseCb => {
+                    exerciseCb.checked = isChecked;
+                });
+                
+                updateCount();
+            });
+            
+            // Initialize section checkbox state
+            updateSectionCheckbox(sectionNum);
+        });
+        
+        // Handle exercise checkbox changes
+        exerciseCheckboxes.forEach(cb => {
+            cb.addEventListener('change', function() {
+                updateCount();
+                const sectionNum = this.dataset.section;
+                if (sectionNum) {
+                    updateSectionCheckbox(sectionNum);
+                }
+            });
         });
         
         // Collapse/expand icon toggle

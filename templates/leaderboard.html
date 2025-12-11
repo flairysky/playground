@@ -55,6 +55,12 @@
                                     </a>
                                 </th>
                                 <th class="text-center">
+                                    <a href="?sort=total_points{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'total_points' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                        Total Points
+                                        {% if sort_by == 'total_points' %}<i class="bi bi-sort-down"></i>{% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-center">
                                     <a href="?sort=week_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Week
                                         {% if sort_by == 'week_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
@@ -117,6 +123,11 @@
                                 <td class="text-center">
                                     <span class="badge bg-primary rounded-pill">
                                         {{ entry.total_exercises }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-success rounded-pill">
+                                        {{ entry.total_points }}
                                     </span>
                                 </td>
                                 <td class="text-center">

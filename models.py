@@ -19,6 +19,7 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime)
     streak_days = db.Column(db.Integer, default=0)
     longest_streak = db.Column(db.Integer, default=0)
+    total_points = db.Column(db.Integer, default=0)  # Total points earned from completing exercises
     nickname_changed_at = db.Column(db.DateTime)  # Track when nickname was last changed
     
     # Privacy settings
@@ -156,8 +157,10 @@ class Exercise(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=False, index=True)
+    section = db.Column(db.Integer)  # Section number within the chapter (e.g., 1, 2, 3 for §1, §2, §3)
     number = db.Column(db.Integer, nullable=False)
     difficulty = db.Column(db.String(20))  # 'easy', 'medium', 'hard'
+    points = db.Column(db.Integer, default=0)  # Points awarded for completing this exercise
     
     # Relationships
     submissions = db.relationship('Submission', backref='exercise', lazy='dynamic', 
@@ -167,7 +170,48 @@ class Exercise(db.Model):
         """Check if this exercise has been completed by a user."""
         return Submission.query.filter_by(user_id=user_id, exercise_id=self.id).first() is not None
     
+    def get_display_number(self):
+        """Get the display number in format chapter.section.exercise (e.g., 1.2.3)."""
+        if self.section:
+            return f"{self.chapter.number}.{self.section}.{self.number}"
+        return f"{self.chapter.number}.{self.number}"
+    
+    def calculate_points(self, is_last_in_section=False, is_section_complete=False, is_chapter_complete=False):
+        """Calculate points for this exercise based on difficulty, bonuses, and chapter multiplier.
+        Each chapter increases points by 5% (1.0, 1.05, 1.10, 1.15, etc.)"""
+        # Base points by difficulty
+        base_points = {
+            'easy': 10,
+            'medium': 20,
+            'hard': 30
+        }.get(self.difficulty, 10)
+        
+        # Chapter multiplier: 5% increase per chapter (Chapter 1 = 1.0, Chapter 2 = 1.05, etc.)
+        chapter_number = self.chapter.number
+        chapter_multiplier = 1 + (0.05 * (chapter_number - 1))
+        
+        total_points = base_points
+        
+        # Last exercise in section bonus
+        if is_last_in_section:
+            total_points += 15
+        
+        # Section completion bonus
+        if is_section_complete:
+            total_points += 50
+        
+        # Chapter completion bonus
+        if is_chapter_complete:
+            total_points += 100
+        
+        # Apply chapter multiplier and round to nearest integer
+        total_points = int(round(total_points * chapter_multiplier))
+        
+        return total_points
+    
     def __repr__(self):
+        if self.section:
+            return f'<Exercise {self.chapter.number}.{self.section}.{self.number}>'
         return f'<Exercise {self.chapter.number}.{self.number}>'
 
 
@@ -181,6 +225,7 @@ class Submission(db.Model):
     filename = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     status = db.Column(db.String(20), default='submitted')
+    points_earned = db.Column(db.Integer, default=0)  # Points earned for this submission
     
     def __repr__(self):
         return f'<Submission {self.id} by User {self.user_id}>'
@@ -407,6 +452,28 @@ class ActivityLog(db.Model):
     
     def __repr__(self):
         return f'<ActivityLog User {self.user_id} on {self.date}>'
+
+
+class ReadingSection(db.Model):
+    """Model for tracking completion of reading-only sections (sections with 0 exercises)."""
+    __tablename__ = 'reading_sections'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    chapter_id = db.Column(db.Integer, db.ForeignKey('chapters.id'), nullable=False, index=True)
+    section = db.Column(db.Integer, nullable=False)  # Section number (1-7, etc.)
+    points_earned = db.Column(db.Integer, default=25)  # Points for reading section
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Unique constraint: one completion per user per section
+    __table_args__ = (db.UniqueConstraint('user_id', 'chapter_id', 'section', name='_user_chapter_section_uc'),)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('reading_sections', lazy='dynamic'))
+    chapter = db.relationship('Chapter', backref=db.backref('reading_completions', lazy='dynamic'))
+    
+    def __repr__(self):
+        return f'<ReadingSection User {self.user_id} Chapter {self.chapter_id} Section {self.section}>'
 
 
 class BookRequest(db.Model):

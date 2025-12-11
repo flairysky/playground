@@ -162,7 +162,7 @@
                                     </div>
                                     <div class="d-flex flex-wrap gap-1">
                                         {% for exercise in upload.exercises[:5] %}
-                                        <span class="badge bg-secondary">Ex {{ exercise.number }}</span>
+                                        <span class="badge bg-secondary">Ex {{ exercise.get_display_number() }}</span>
                                         {% endfor %}
                                         {% if upload.exercises|length > 5 %}
                                         <span class="badge bg-secondary">+{{ upload.exercises|length - 5 }}</span>

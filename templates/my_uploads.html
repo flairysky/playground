@@ -46,7 +46,7 @@
                         <div class="d-flex flex-wrap gap-1 mt-1">
                             {% for exercise in upload.exercises %}
                             <span class="badge bg-secondary" title="{{ exercise.chapter }} - {{ exercise.title }}">
-                                Ex {{ exercise.number }}
+                                Ex {{ exercise.get_display_number() }}
                             </span>
                             {% endfor %}
                         </div>
