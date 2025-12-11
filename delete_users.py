@@ -4,32 +4,28 @@ from models import db, User, BookRequest, Submission, ReadingSection, ActivityLo
 app = create_app()
 
 with app.app_context():
-    # Find users
-    test_user = User.query.filter_by(username='test').first()
+    # Find user
     nadry_user = User.query.filter_by(username='nadry').first()
     
-    users_to_delete = [u for u in [test_user, nadry_user] if u]
-    
-    if not users_to_delete:
-        print("No users found to delete")
+    if not nadry_user:
+        print("User 'nadry' not found")
     else:
-        user_ids = [u.id for u in users_to_delete]
-        usernames = [u.username for u in users_to_delete]
+        user_id = nadry_user.id
+        username = nadry_user.username
         
         # Delete related data first
-        book_requests_deleted = BookRequest.query.filter(BookRequest.user_id.in_(user_ids)).delete(synchronize_session=False)
-        submissions_deleted = Submission.query.filter(Submission.user_id.in_(user_ids)).delete(synchronize_session=False)
-        reading_sections_deleted = ReadingSection.query.filter(ReadingSection.user_id.in_(user_ids)).delete(synchronize_session=False)
-        activity_logs_deleted = ActivityLog.query.filter(ActivityLog.user_id.in_(user_ids)).delete(synchronize_session=False)
-        weekly_plans_deleted = WeeklyPlan.query.filter(WeeklyPlan.user_id.in_(user_ids)).delete(synchronize_session=False)
+        book_requests_deleted = BookRequest.query.filter_by(user_id=user_id).delete()
+        submissions_deleted = Submission.query.filter_by(user_id=user_id).delete()
+        reading_sections_deleted = ReadingSection.query.filter_by(user_id=user_id).delete()
+        activity_logs_deleted = ActivityLog.query.filter_by(user_id=user_id).delete()
+        weekly_plans_deleted = WeeklyPlan.query.filter_by(user_id=user_id).delete()
         
-        # Delete users
-        for user in users_to_delete:
-            db.session.delete(user)
+        # Delete user
+        db.session.delete(nadry_user)
         
         db.session.commit()
         
-        print(f"Successfully deleted users: {usernames}")
+        print(f"Successfully deleted user: {username}")
         print(f"  - Book requests deleted: {book_requests_deleted}")
         print(f"  - Submissions deleted: {submissions_deleted}")
         print(f"  - Reading sections deleted: {reading_sections_deleted}")
