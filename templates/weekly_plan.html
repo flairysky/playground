@@ -221,22 +221,43 @@
                         </div>
                         
                         {% if plan.target_exercises and plan.get_target_count() > 0 %}
-                        <div class="progress mb-2" style="height: 20px;">
-                            <div class="progress-bar {% if plan.get_progress() == 100 %}bg-success{% elif plan.is_overdue() %}bg-danger{% endif %}" 
-                                 role="progressbar" 
-                                 style="width: {{ plan.get_progress() }}%"
-                                 aria-valuenow="{{ plan.get_progress() }}" 
-                                 aria-valuemin="0" 
-                                 aria-valuemax="100">
-                                {{ plan.get_progress() }}%
+                        <div class="mb-2">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-bookmark-check"></i> Chapter Progress:
+                            </small>
+                            <div class="progress mb-1" style="height: 20px;">
+                                <div class="progress-bar {% if plan.get_progress() == 100 %}bg-success{% elif plan.is_overdue() %}bg-danger{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ plan.get_progress() }}%"
+                                     aria-valuenow="{{ plan.get_progress() }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    {{ plan.get_progress() }}%
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mb-2">
+                                <i class="bi bi-list-check"></i>
+                                {{ plan.get_completed_count() }} / {{ plan.get_target_count() }} exercises
+                            </small>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <small class="text-muted d-block mb-1">
+                                <i class="bi bi-book"></i> Overall Book Progress:
+                            </small>
+                            <div class="progress mb-1" style="height: 20px;">
+                                <div class="progress-bar bg-info" 
+                                     role="progressbar" 
+                                     style="width: {{ plan.get_book_progress() }}%"
+                                     aria-valuenow="{{ plan.get_book_progress() }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                    {{ plan.get_book_progress() }}%
+                                </div>
                             </div>
                         </div>
                         
                         <div class="d-flex justify-content-between text-muted small mb-2">
-                            <span>
-                                <i class="bi bi-list-check"></i>
-                                {{ plan.get_completed_count() }} / {{ plan.get_target_count() }} exercises
-                            </span>
                             <span>
                                 <i class="bi bi-calendar-range"></i>
                                 {{ plan.start_date.strftime('%b %d') }} - {{ plan.end_date.strftime('%b %d, %Y') }}

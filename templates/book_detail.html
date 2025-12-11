@@ -129,6 +129,7 @@
                                                 <input type="checkbox" 
                                                        class="form-check-input me-3 section-checkbox" 
                                                        id="section-{{ chapter.id }}-{{ section_num }}"
+                                                       data-chapter="{{ chapter.id }}"
                                                        data-section="{{ section_num }}"
                                                        style="width: 20px; height: 20px;">
                                                 <h6 class="mb-0">
@@ -176,7 +177,8 @@
                                                         <input type="checkbox" 
                                                                name="exercises" 
                                                                value="{{ exercise.id }}"
-                                                               class="form-check-input exercise-checkbox section-{{ section_num }}-exercise"
+                                                               class="form-check-input exercise-checkbox chapter-{{ chapter.id }}-section-{{ section_num }}-exercise"
+                                                               data-chapter="{{ chapter.id }}"
                                                                data-section="{{ section_num }}"
                                                                {% if exercise.id in submission_dict %}checked disabled{% endif %}>
                                                     </td>
@@ -250,12 +252,12 @@
             countSpan.textContent = checked;
         }
         
-        function updateSectionCheckbox(sectionNum) {
-            const sectionCheckbox = document.querySelector(`.section-checkbox[data-section="${sectionNum}"]`);
+        function updateSectionCheckbox(chapterId, sectionNum) {
+            const sectionCheckbox = document.querySelector(`.section-checkbox[data-chapter="${chapterId}"][data-section="${sectionNum}"]`);
             if (!sectionCheckbox) return;
             
-            const sectionExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:not(:disabled)`);
-            const checkedExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:checked`);
+            const sectionExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise:not(:disabled)`);
+            const checkedExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise:checked`);
             
             if (sectionExercises.length === 0) {
                 sectionCheckbox.checked = false;
@@ -274,11 +276,12 @@
         
         // Handle section checkbox changes
         sectionCheckboxes.forEach(sectionCb => {
+            const chapterId = sectionCb.dataset.chapter;
             const sectionNum = sectionCb.dataset.section;
             
             sectionCb.addEventListener('change', function() {
                 const isChecked = this.checked;
-                const sectionExercises = document.querySelectorAll(`.section-${sectionNum}-exercise:not(:disabled)`);
+                const sectionExercises = document.querySelectorAll(`.chapter-${chapterId}-section-${sectionNum}-exercise:not(:disabled)`);
                 
                 sectionExercises.forEach(exerciseCb => {
                     exerciseCb.checked = isChecked;
@@ -288,16 +291,17 @@
             });
             
             // Initialize section checkbox state
-            updateSectionCheckbox(sectionNum);
+            updateSectionCheckbox(chapterId, sectionNum);
         });
         
         // Handle exercise checkbox changes
         exerciseCheckboxes.forEach(cb => {
             cb.addEventListener('change', function() {
                 updateCount();
+                const chapterId = this.dataset.chapter;
                 const sectionNum = this.dataset.section;
-                if (sectionNum) {
-                    updateSectionCheckbox(sectionNum);
+                if (chapterId && sectionNum) {
+                    updateSectionCheckbox(chapterId, sectionNum);
                 }
             });
         });

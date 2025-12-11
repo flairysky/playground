@@ -299,6 +299,23 @@ class WeeklyPlan(db.Model):
         except:
             return 0
     
+    def get_book_progress(self):
+        """Calculate overall book completion percentage for this plan's book."""
+        if not self.book_id:
+            return 0
+        
+        total_exercises = db.session.query(db.func.count(Exercise.id))\
+            .join(Chapter).filter(Chapter.book_id == self.book_id).scalar() or 0
+        
+        if total_exercises == 0:
+            return 0
+        
+        completed = db.session.query(db.func.count(db.distinct(Submission.exercise_id)))\
+            .join(Exercise).join(Chapter)\
+            .filter(Submission.user_id == self.user_id, Chapter.book_id == self.book_id).scalar() or 0
+        
+        return int((completed / total_exercises) * 100) if total_exercises > 0 else 0
+    
     def days_remaining(self):
         """Get number of days remaining in the plan."""
         if self.deadline_time and '_' in self.deadline_time:
