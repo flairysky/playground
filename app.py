@@ -879,6 +879,171 @@ def create_app(config_class=Config):
         
         return redirect(url_for('book_detail', slug=slug))
     
+    @app.route('/books/<slug>/mark-done', methods=['POST'])
+    @login_required
+    def mark_exercises_done(slug):
+        """Mark exercises as done without uploading a file."""
+        book = Book.query.filter_by(slug=slug).first_or_404()
+        
+        # Get selected exercise IDs
+        exercise_ids = request.form.getlist('exercises')
+        
+        if not exercise_ids:
+            flash('No exercises selected.', 'warning')
+            return redirect(url_for('book_detail', slug=slug))
+        
+        # Create submissions without file
+        submission_count = 0
+        total_points_earned = 0
+        today = date.today()
+        
+        # First, collect valid exercises and check which are new
+        exercises_to_submit = []
+        for ex_id in exercise_ids:
+            exercise = Exercise.query.get(int(ex_id))
+            if exercise:
+                # Check if already submitted
+                existing = Submission.query.filter_by(
+                    user_id=current_user.id,
+                    exercise_id=exercise.id
+                ).first()
+                
+                if not existing:
+                    exercises_to_submit.append(exercise)
+        
+        # Group exercises by section and chapter to detect completions
+        sections_completing = set()
+        chapters_completing = set()
+        
+        for exercise in exercises_to_submit:
+            # Check section completion
+            if exercise.section:
+                section_key = (exercise.chapter_id, exercise.section)
+                section_exercises = Exercise.query.filter_by(
+                    chapter_id=exercise.chapter_id,
+                    section=exercise.section
+                ).all()
+                
+                completed_in_section = Submission.query.join(Exercise).filter(
+                    Submission.user_id == current_user.id,
+                    Exercise.chapter_id == exercise.chapter_id,
+                    Exercise.section == exercise.section
+                ).count()
+                
+                batch_in_section = sum(1 for e in exercises_to_submit 
+                                      if e.chapter_id == exercise.chapter_id and e.section == exercise.section)
+                
+                if completed_in_section + batch_in_section == len(section_exercises):
+                    sections_completing.add(section_key)
+            
+            # Check chapter completion
+            chapter_exercises = Exercise.query.filter_by(
+                chapter_id=exercise.chapter_id
+            ).all()
+            
+            completed_in_chapter = Submission.query.join(Exercise).filter(
+                Submission.user_id == current_user.id,
+                Exercise.chapter_id == exercise.chapter_id
+            ).count()
+            
+            batch_in_chapter = sum(1 for e in exercises_to_submit if e.chapter_id == exercise.chapter_id)
+            
+            if completed_in_chapter + batch_in_chapter == len(chapter_exercises):
+                chapters_completing.add(exercise.chapter_id)
+        
+        # Process each exercise
+        for exercise in exercises_to_submit:
+            # Check if this is last exercise in section (by number)
+            is_last_in_section = False
+            if exercise.section:
+                section_exercises = Exercise.query.filter_by(
+                    chapter_id=exercise.chapter_id,
+                    section=exercise.section
+                ).order_by(Exercise.number.desc()).first()
+                is_last_in_section = (section_exercises and section_exercises.id == exercise.id)
+            
+            # Check if section will be complete with this batch
+            is_section_complete = False
+            if exercise.section:
+                section_key = (exercise.chapter_id, exercise.section)
+                is_section_complete = section_key in sections_completing
+            
+            # Check if chapter will be complete with this batch
+            is_chapter_complete = exercise.chapter_id in chapters_completing
+            
+            # Calculate points
+            points = exercise.calculate_points(
+                is_last_in_section=is_last_in_section,
+                is_section_complete=is_section_complete,
+                is_chapter_complete=is_chapter_complete
+            )
+            
+            # Create submission without filename (use special marker)
+            submission = Submission(
+                user_id=current_user.id,
+                exercise_id=exercise.id,
+                filename='__marked_done__',  # Special marker for exercises marked as done
+                points_earned=points
+            )
+            db.session.add(submission)
+            submission_count += 1
+            total_points_earned += points
+        
+        # Update user's total points
+        if not current_user.total_points:
+            current_user.total_points = 0
+        current_user.total_points += total_points_earned
+        
+        # Update activity log for today
+        activity = ActivityLog.query.filter_by(
+            user_id=current_user.id,
+            date=today
+        ).first()
+        
+        if activity:
+            activity.exercises_done += submission_count
+        else:
+            activity = ActivityLog(
+                user_id=current_user.id,
+                date=today,
+                exercises_done=submission_count
+            )
+            db.session.add(activity)
+        
+        # Update streak
+        current_user.update_streak(today)
+        
+        # Check and update weekly plans
+        update_weekly_plans_on_completion(current_user.id, book.id)
+        
+        # Simulate fake user progress
+        simulate_fake_user_progress(current_user.id, submission_count, total_points_earned)
+        
+        # Create new random fake users
+        new_users_count = create_random_fake_users()
+        
+        db.session.commit()
+        
+        # Store companion message in session if user has a companion
+        if current_user.companion_id:
+            chapters_in_upload = set(e.chapter_id for e in exercises_to_submit)
+            is_large_upload = len(chapters_in_upload) > 1
+            companion_msg = get_upload_message(current_user.companion_id, is_large_upload)
+            if companion_msg:
+                session['companion_message'] = companion_msg
+                flash(f"{companion_msg['emoji']} {companion_msg['name']}: {companion_msg['message']}", 'info')
+        
+        # Flash success message
+        if total_points_earned > 0:
+            flash(f'Successfully marked {submission_count} exercise(s) as done! You earned {total_points_earned} points!', 'success')
+        else:
+            flash(f'Successfully marked {submission_count} exercise(s) as done!', 'success')
+        
+        if new_users_count > 0:
+            flash(f'🆕 {new_users_count} new competitor(s) joined the platform!', 'info')
+        
+        return redirect(url_for('book_detail', slug=slug))
+    
     @app.route('/leaderboard')
     @login_required
     def leaderboard():

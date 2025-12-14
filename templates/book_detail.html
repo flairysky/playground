@@ -43,13 +43,16 @@
                 <hr>
                 <form method="POST" action="{{ url_for('submit_solution', slug=book.slug) }}" enctype="multipart/form-data">
                     <div class="row">
-                        <div class="col-md-8 mb-3">
-                            <label class="form-label">Select File (PDF, PNG, JPG, JPEG)</label>
-                            <input type="file" name="solution_file" class="form-control" accept=".pdf,.png,.jpg,.jpeg" required>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Select File (PDF, PNG, JPG, JPEG) - Optional</label>
+                            <input type="file" name="solution_file" class="form-control" accept=".pdf,.png,.jpg,.jpeg" id="solution-file-input">
                         </div>
-                        <div class="col-md-4 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
+                        <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary flex-fill">
                                 <i class="bi bi-upload"></i> Upload Solution
+                            </button>
+                            <button type="button" class="btn btn-success flex-fill" id="mark-done-btn" onclick="markAsDone('{{ book.slug }}')">
+                                <i class="bi bi-check-circle"></i> Mark as Done
                             </button>
                         </div>
                     </div>
@@ -116,6 +119,7 @@
                                 
                                 {% for section_num in range(1, 8) %}
                                     {% set section_exercises = exercises_by_section.get(section_num, []) %}
+                                    {% set is_reading_section = (section_exercises|length == 1) %}
                                     {% set reading_key = chapter.id|string + '_' + section_num|string %}
                                     {% set is_reading_complete = reading_key in reading_sections_completed %}
                                     {% set chapter_multiplier = 1 + (0.05 * (chapter.number - 1)) %}
@@ -134,26 +138,16 @@
                                                        style="width: 20px; height: 20px;">
                                                 <h6 class="mb-0">
                                                     <strong>§{{ section_num }}. {{ section_names[section_num] }}</strong>
-                                                    <span class="badge bg-primary ms-2">{{ section_exercises|length }} exercises</span>
-                                                    {% if section_exercises|length == 0 %}
-                                                    <span class="badge bg-info ms-1">Reading only</span>
-                                                    <span class="badge bg-success ms-1"><i class="bi bi-star-fill"></i> {{ reading_points }} pts</span>
+                                                    {% if is_reading_section %}
+                                                    <span class="badge bg-info ms-2"><i class="bi bi-book"></i> Reading Section</span>
+                                                    <span class="badge bg-success ms-1"><i class="bi bi-star-fill"></i> {{ section_total_points }} pts</span>
                                                     {% else %}
+                                                    <span class="badge bg-primary ms-2">{{ section_exercises|length }} exercises</span>
                                                     <span class="badge bg-success ms-1"><i class="bi bi-star-fill"></i> {{ section_total_points }} pts</span>
                                                     <span class="badge bg-warning text-dark ms-1"><i class="bi bi-trophy-fill"></i> +{{ (50 * chapter_multiplier) | round | int }} pts bonus for completion</span>
                                                     {% endif %}
                                                 </h6>
                                             </div>
-                                            {% if section_exercises|length == 0 %}
-                                            <div>
-                                                <form method="POST" action="{{ url_for('mark_reading_complete', slug=book.slug, chapter_id=chapter.id, section=section_num) }}" style="display: inline;">
-                                                    <button type="submit" class="btn btn-sm {% if is_reading_complete %}btn-success{% else %}btn-outline-success{% endif %}">
-                                                        <i class="bi bi-{% if is_reading_complete %}check-circle-fill{% else %}circle{% endif %}"></i>
-                                                        {% if is_reading_complete %}Completed{% else %}Mark as Read{% endif %}
-                                                    </button>
-                                                </form>
-                                            </div>
-                                            {% endif %}
                                         </div>
                                     </div>
                                     
@@ -184,6 +178,9 @@
                                                     </td>
                                                     <td>
                                                         <strong>{{ exercise.get_display_number() }}</strong>
+                                                        {% if is_reading_section %}
+                                                        <span class="badge bg-info ms-1"><i class="bi bi-book-half"></i> Reading Completion</span>
+                                                        {% endif %}
                                                     </td>
                                                     <td>
                                                         {% if exercise.difficulty %}
@@ -212,13 +209,23 @@
                                                     </td>
                                                     <td>
                                                         {% if exercise.id in submission_dict %}
+                                                            {% if submission_dict[exercise.id].filename == '__marked_done__' %}
+                                                            <span class="badge bg-info">
+                                                                <i class="bi bi-check-circle"></i> Marked Done
+                                                            </span>
+                                                            {% else %}
                                                             <a href="{{ url_for('uploaded_file', filename=submission_dict[exercise.id].filename) }}" 
                                                                class="btn btn-sm btn-outline-primary" 
                                                                target="_blank">
                                                                 <i class="bi bi-file-earmark"></i> View
                                                             </a>
+                                                            {% endif %}
                                                         {% else %}
+                                                            {% if is_reading_section %}
+                                                            <small class="text-muted"><i class="bi bi-info-circle"></i> Upload notes/summary</small>
+                                                            {% else %}
                                                             <span class="text-muted">-</span>
+                                                            {% endif %}
                                                         {% endif %}
                                                     </td>
                                                 </tr>
@@ -317,5 +324,40 @@
             });
         });
     });
+    
+    // Mark exercises as done without uploading
+    function markAsDone(bookSlug) {
+        // Get all selected exercises that are not disabled (not already completed)
+        const selectedExercises = Array.from(document.querySelectorAll('.exercise-checkbox:checked:not(:disabled)'));
+        
+        if (selectedExercises.length === 0) {
+            alert('Please select at least one exercise to mark as done.');
+            return;
+        }
+        
+        // Get exercise IDs
+        const exerciseIds = selectedExercises.map(cb => cb.value);
+        
+        // Confirm action
+        if (!confirm(`Mark ${exerciseIds.length} exercise(s) as done without uploading? You will earn points but won't have a file attached.`)) {
+            return;
+        }
+        
+        // Create a form and submit it to use Flask's flash messages
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/books/${bookSlug}/mark-done`;
+        
+        exerciseIds.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'exercises';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
 </script>
 {% endblock %}
