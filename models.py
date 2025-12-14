@@ -29,6 +29,13 @@ class User(UserMixin, db.Model):
     public_activity = db.Column(db.Boolean, default=True)
     show_leaderboard = db.Column(db.Boolean, default=True)  # Whether to show leaderboard on dashboard
     
+    # Gamification - for AI/fake users
+    is_fake = db.Column(db.Boolean, default=False)  # Whether this is a fake/bot user
+    competitiveness = db.Column(db.Float, default=0.5)  # How competitive (0.1-0.9): percentage of real user's progress
+    
+    # Team system
+    team = db.Column(db.String(20))  # 'red', 'blue', or 'green'
+    
     # Relationships
     submissions = db.relationship('Submission', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     weekly_plans = db.relationship('WeeklyPlan', backref='user', lazy='dynamic', cascade='all, delete-orphan')

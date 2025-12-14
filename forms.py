@@ -26,6 +26,10 @@ class RegistrationForm(FlaskForm):
         DataRequired(),
         EqualTo('password', message='Passwords must match')
     ])
+    team = SelectField('Choose Your Team', 
+        choices=[('red', '🔴 Red Team'), ('blue', '🔵 Blue Team'), ('green', '🟢 Green Team')],
+        validators=[DataRequired()]
+    )
     show_leaderboard = BooleanField('I am competitive and want to see the leaderboard on my dashboard', default=True)
     submit = SubmitField('Register')
     

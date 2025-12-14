@@ -295,6 +295,15 @@
                             </small>
                         </div>
                         {% endif %}
+                        
+                        <!-- Delete Button -->
+                        <div class="mt-2">
+                            <form method="POST" action="{{ url_for('delete_weekly_plan', plan_id=plan.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this weekly plan?');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i> Delete Plan
+                                </button>
+                            </form>
+                        </div>
                     </div>
                     {% endfor %}
                 {% else %}

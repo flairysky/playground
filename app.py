@@ -149,6 +149,229 @@ def create_app(config_class=Config):
                                 exercise_ids = [ex.id for ex in next_exercises]
                                 plan.target_exercises = json.dumps(exercise_ids)
     
+    def simulate_fake_user_progress(real_user_id, exercises_submitted, points_earned):
+        """Simulate progress for fake users when a real user submits exercises."""
+        import random
+        from datetime import datetime, timedelta
+        
+        # Don't simulate if the real user is fake
+        real_user = User.query.get(real_user_id)
+        if not real_user or real_user.is_fake:
+            return
+        
+        # Get all fake users
+        fake_users = User.query.filter_by(is_fake=True).all()
+        if not fake_users:
+            return
+        
+        # Get all available exercises (that haven't been completed by each fake user)
+        all_exercises = Exercise.query.all()
+        today = date.today()
+        
+        for fake_user in fake_users:
+            # Determine how many exercises this fake user will complete
+            # Based on their competitiveness (10-90% of real user's progress)
+            base_percentage = fake_user.competitiveness
+            # Add some randomness (±15% variation)
+            actual_percentage = random.uniform(max(0.1, base_percentage - 0.15), min(0.9, base_percentage + 0.15))
+            
+            # Calculate number of exercises for this fake user
+            num_exercises = max(1, int(exercises_submitted * actual_percentage))
+            
+            # Get exercises this fake user hasn't completed yet
+            completed_exercise_ids = db.session.query(Submission.exercise_id)\
+                .filter(Submission.user_id == fake_user.id).all()
+            completed_exercise_ids = [ex_id[0] for ex_id in completed_exercise_ids]
+            
+            available_exercises = [ex for ex in all_exercises if ex.id not in completed_exercise_ids]
+            
+            if not available_exercises:
+                continue  # This fake user has completed everything
+            
+            # Randomly select exercises to "complete"
+            exercises_to_complete = random.sample(
+                available_exercises, 
+                min(num_exercises, len(available_exercises))
+            )
+            
+            fake_points_earned = 0
+            for exercise in exercises_to_complete:
+                # Calculate points for this exercise (simplified - no bonuses for fake users)
+                points = exercise.points
+                
+                # Create submission with slight time variation (within last 6 hours)
+                hours_ago = random.randint(0, 6)
+                minutes_ago = random.randint(0, 59)
+                submission_time = datetime.utcnow() - timedelta(hours=hours_ago, minutes=minutes_ago)
+                
+                submission = Submission(
+                    user_id=fake_user.id,
+                    exercise_id=exercise.id,
+                    filename=f'ai_solution_{fake_user.id}_{exercise.id}.pdf',
+                    created_at=submission_time,
+                    status='submitted',
+                    points_earned=points
+                )
+                db.session.add(submission)
+                fake_points_earned += points
+            
+            # Update fake user's total points
+            if not fake_user.total_points:
+                fake_user.total_points = 0
+            fake_user.total_points += fake_points_earned
+            
+            # Update activity log for fake user
+            activity = ActivityLog.query.filter_by(
+                user_id=fake_user.id,
+                date=today
+            ).first()
+            
+            if activity:
+                activity.exercises_done += len(exercises_to_complete)
+            else:
+                activity = ActivityLog(
+                    user_id=fake_user.id,
+                    date=today,
+                    exercises_done=len(exercises_to_complete)
+                )
+                db.session.add(activity)
+            
+            # Small chance to update streak
+            if random.random() < 0.3:  # 30% chance
+                fake_user.streak_days = min(fake_user.streak_days + 1, 30)
+                fake_user.longest_streak = max(fake_user.longest_streak, fake_user.streak_days)
+    
+    def create_random_fake_users():
+        """Create 1-5 random new fake users with activity."""
+        import random
+        from datetime import datetime, timedelta
+        
+        # List of possible names for generating fake users
+        first_names = [
+            'Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Ethan', 'Sophia', 'Mason',
+            'Isabella', 'William', 'Mia', 'James', 'Charlotte', 'Benjamin', 'Amelia',
+            'Lucas', 'Harper', 'Henry', 'Evelyn', 'Alexander', 'Abigail', 'Michael',
+            'Emily', 'Daniel', 'Elizabeth', 'Matthew', 'Sofia', 'Jackson', 'Avery',
+            'Sebastian', 'Ella', 'David', 'Scarlett', 'Joseph', 'Grace', 'Samuel',
+            'Chloe', 'John', 'Victoria', 'Owen', 'Riley', 'Dylan', 'Aria', 'Luke',
+            'Lily', 'Gabriel', 'Aubrey', 'Anthony', 'Zoey', 'Isaac', 'Penelope'
+        ]
+        
+        suffixes = [
+            'math', 'brain', 'genius', 'pro', 'ace', 'star', 'master', 'champ',
+            'whiz', 'solver', 'ninja', 'legend', 'wizard', 'expert', 'scholar',
+            'student', 'learner', 'thinker', 'keen', 'smart', 'bright', 'swift'
+        ]
+        
+        # Randomly decide how many users to create (1-5)
+        num_users = random.randint(1, 5)
+        
+        # Get all exercises for assigning initial activity
+        all_exercises = Exercise.query.all()
+        if not all_exercises:
+            return 0
+        
+        created_count = 0
+        today = date.today()
+        
+        for _ in range(num_users):
+            # Generate unique username
+            attempts = 0
+            while attempts < 50:  # Try up to 50 times to find unique username
+                first_name = random.choice(first_names)
+                suffix = random.choice(suffixes)
+                username = f"{first_name.lower()}_{suffix}"
+                email = f"{username}@example.com"
+                
+                # Check if username exists
+                existing = User.query.filter_by(username=username).first()
+                if not existing:
+                    break
+                attempts += 1
+            else:
+                # Couldn't find unique username after 50 attempts, skip
+                continue
+            
+            # Determine competitiveness tier (same distribution as before)
+            tier_roll = random.random()
+            if tier_roll < 0.33:  # 33% high
+                competitiveness = random.uniform(0.7, 0.9)
+            elif tier_roll < 0.53:  # 20% low
+                competitiveness = random.uniform(0.1, 0.3)
+            else:  # 47% medium
+                competitiveness = random.uniform(0.4, 0.6)
+            
+            # Randomly assign team
+            team = random.choice(['red', 'blue', 'green'])
+            
+            # Create user
+            user = User(
+                username=username,
+                nickname=first_name,
+                email=email,
+                public_profile=True,
+                public_stats=True,
+                public_activity=True,
+                show_leaderboard=True,
+                is_fake=True,
+                competitiveness=competitiveness,
+                team=team
+            )
+            user.set_password('password123')
+            
+            # Random join date (joined recently - within last 7 days)
+            days_ago = random.randint(0, 7)
+            user.date_joined = datetime.utcnow() - timedelta(days=days_ago)
+            
+            db.session.add(user)
+            db.session.flush()  # Get user.id
+            
+            # Give them some initial activity (1-15 exercises completed)
+            num_initial_exercises = random.randint(1, 15)
+            selected_exercises = random.sample(all_exercises, min(num_initial_exercises, len(all_exercises)))
+            
+            total_points = 0
+            for exercise in selected_exercises:
+                # Random submission date (within their lifetime)
+                days_since_join = (datetime.utcnow() - user.date_joined).days
+                if days_since_join > 0:
+                    submission_days_ago = random.randint(0, days_since_join)
+                else:
+                    submission_days_ago = 0
+                
+                submission_date = datetime.utcnow() - timedelta(days=submission_days_ago)
+                
+                submission = Submission(
+                    user_id=user.id,
+                    exercise_id=exercise.id,
+                    filename=f'ai_solution_{user.id}_{exercise.id}.pdf',
+                    created_at=submission_date,
+                    status='submitted',
+                    points_earned=exercise.points
+                )
+                db.session.add(submission)
+                total_points += exercise.points
+            
+            # Set total points
+            user.total_points = total_points
+            
+            # Create activity log for today if they did any exercises today
+            if random.random() < 0.5:  # 50% chance they were active today
+                activity = ActivityLog(
+                    user_id=user.id,
+                    date=today,
+                    exercises_done=random.randint(1, 3)
+                )
+                db.session.add(activity)
+            
+            # Random streak
+            user.streak_days = random.randint(0, 10)
+            user.longest_streak = random.randint(user.streak_days, 20)
+            
+            created_count += 1
+        
+        return created_count
+    
     def get_activity_calendar(user, days=60):
         """Generate activity calendar data for the last N days."""
         today = date.today()
@@ -208,7 +431,8 @@ def create_app(config_class=Config):
                 username=form.username.data,
                 email=form.email.data,
                 nickname=form.nickname.data if form.nickname.data else None,
-                show_leaderboard=form.show_leaderboard.data
+                show_leaderboard=form.show_leaderboard.data,
+                team=form.team.data
             )
             user.set_password(form.password.data)
             db.session.add(user)
@@ -555,12 +779,22 @@ def create_app(config_class=Config):
         # Check and update weekly plans if chapter is completed
         update_weekly_plans_on_completion(current_user.id, book.id)
         
+        # Simulate fake user progress (gamification)
+        simulate_fake_user_progress(current_user.id, submission_count, total_points_earned)
+        
+        # Create new random fake users (1-5)
+        new_users_count = create_random_fake_users()
+        
         db.session.commit()
         
         if total_points_earned > 0:
             flash(f'Successfully submitted solution for {submission_count} exercise(s)! You earned {total_points_earned} points!', 'success')
         else:
             flash(f'Successfully submitted solution for {submission_count} exercise(s)!', 'success')
+        
+        if new_users_count > 0:
+            flash(f'🆕 {new_users_count} new competitor(s) joined the platform!', 'info')
+        
         return redirect(url_for('book_detail', slug=slug))
     
     @app.route('/books/<slug>/mark-reading/<int:chapter_id>/<int:section>', methods=['POST'])
@@ -812,6 +1046,23 @@ def create_app(config_class=Config):
         all_chapters = Chapter.query.order_by(Chapter.book_id, Chapter.number).all()
         
         return render_template('weekly_plan.html', form=form, plans=plans, books=books, all_chapters=all_chapters)
+    
+    @app.route('/weekly-plan/delete/<int:plan_id>', methods=['POST'])
+    @login_required
+    def delete_weekly_plan(plan_id):
+        """Delete a weekly plan."""
+        plan = WeeklyPlan.query.get_or_404(plan_id)
+        
+        # Check if plan belongs to current user
+        if plan.user_id != current_user.id:
+            flash('You do not have permission to delete this plan.', 'danger')
+            return redirect(url_for('weekly_plan'))
+        
+        db.session.delete(plan)
+        db.session.commit()
+        
+        flash('Weekly plan deleted successfully!', 'success')
+        return redirect(url_for('weekly_plan'))
     
     @app.route('/uploads/<filename>')
     @login_required

@@ -38,12 +38,30 @@ def create_fake_users():
         
         print(f"Found {len(exercises)} exercises in database")
         
+        # Competitiveness tiers
+        high_comp_users = random.sample(FAKE_USERS, k=5)  # 5 high competitors
+        low_comp_users = random.sample([u for u in FAKE_USERS if u not in high_comp_users], k=3)  # 3 low
+        
         for user_data in FAKE_USERS:
             # Check if user exists
             existing = User.query.filter_by(username=user_data['username']).first()
             if existing:
                 print(f"User {user_data['username']} already exists, skipping...")
                 continue
+            
+            # Determine competitiveness tier
+            if user_data in high_comp_users:
+                competitiveness = random.uniform(0.7, 0.9)
+                tier = "HIGH"
+            elif user_data in low_comp_users:
+                competitiveness = random.uniform(0.1, 0.3)
+                tier = "LOW"
+            else:
+                competitiveness = random.uniform(0.4, 0.6)
+                tier = "MEDIUM"
+            
+            # Randomly assign team
+            team = random.choice(['red', 'blue', 'green'])
             
             # Create user
             user = User(
@@ -53,7 +71,10 @@ def create_fake_users():
                 public_profile=True,
                 public_stats=True,
                 public_activity=True,
-                show_leaderboard=True
+                show_leaderboard=True,
+                is_fake=True,
+                competitiveness=competitiveness,
+                team=team
             )
             user.set_password('password123')  # Simple password for testing
             
@@ -107,7 +128,7 @@ def create_fake_users():
             user.streak_days = random.randint(0, 15)
             user.longest_streak = random.randint(user.streak_days, 30)
             
-            print(f"Created user: {user.nickname} ({user.username}) with {len(selected_exercises)} exercises")
+            print(f"Created user: {user.nickname} ({user.username}) - {tier} competitiveness ({competitiveness:.2f}) - {len(selected_exercises)} exercises")
         
         # Commit all changes
         db.session.commit()

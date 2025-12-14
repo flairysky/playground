@@ -76,6 +76,19 @@
                         {% endif %}
                     </div>
                     
+                    <div class="mb-3">
+                        {{ form.team.label(class="form-label") }}
+                        {{ form.team(class="form-select" + (" is-invalid" if form.team.errors else "")) }}
+                        {% if form.team.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.team.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Join a team and compete together!</small>
+                    </div>
+                    
                     <div class="mb-4">
                         <div class="form-check">
                             {{ form.show_leaderboard(class="form-check-input") }}
