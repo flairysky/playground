@@ -30,6 +30,20 @@ class RegistrationForm(FlaskForm):
         choices=[('red', '🔴 Red Team'), ('blue', '🔵 Blue Team'), ('green', '🟢 Green Team')],
         validators=[DataRequired()]
     )
+    companion = SelectField('Choose Your Companion', 
+        choices=[
+            ('1', '🦉 Wise Owl - A wise mentor'),
+            ('2', '🦊 Speedy Fox - An energetic friend'),
+            ('3', '🐻 Strong Bear - A powerful ally'),
+            ('4', '🐱 Clever Cat - A smart companion'),
+            ('5', '🦁 Brave Lion - A courageous sidekick')
+        ],
+        validators=[DataRequired()]
+    )
+    companion_name = StringField('Give Your Companion a Name (optional)', validators=[
+        Optional(),
+        Length(max=80, message='Companion name must be at most 80 characters')
+    ])
     show_leaderboard = BooleanField('I am competitive and want to see the leaderboard on my dashboard', default=True)
     submit = SubmitField('Register')
     

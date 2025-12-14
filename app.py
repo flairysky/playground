@@ -1,7 +1,7 @@
 import os
 import json
 from datetime import datetime, date, timedelta
-from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory
+from flask import Flask, render_template, redirect, url_for, flash, request, send_from_directory, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from sqlalchemy import func
@@ -9,6 +9,7 @@ from sqlalchemy import func
 from config import Config
 from models import db, User, Book, Chapter, Exercise, Submission, WeeklyPlan, ActivityLog
 from forms import RegistrationForm, LoginForm, WeeklyPlanForm
+from companions import get_login_message, get_upload_message
 
 
 def create_app(config_class=Config):
@@ -304,6 +305,9 @@ def create_app(config_class=Config):
             # Randomly assign team
             team = random.choice(['red', 'blue', 'green'])
             
+            # Randomly assign companion (1-5)
+            companion_id = random.randint(1, 5)
+            
             # Create user
             user = User(
                 username=username,
@@ -315,7 +319,8 @@ def create_app(config_class=Config):
                 show_leaderboard=True,
                 is_fake=True,
                 competitiveness=competitiveness,
-                team=team
+                team=team,
+                companion_id=companion_id
             )
             user.set_password('password123')
             
@@ -411,6 +416,13 @@ def create_app(config_class=Config):
         
         return calendar_data
     
+    # Context processor to make companion_message available in all templates
+    @app.context_processor
+    def inject_companion_message():
+        """Inject companion message from session into all templates."""
+        companion_message = session.get('companion_message')
+        return dict(companion_message=companion_message)
+    
     # Routes
     @app.route('/')
     def index():
@@ -432,7 +444,9 @@ def create_app(config_class=Config):
                 email=form.email.data,
                 nickname=form.nickname.data if form.nickname.data else None,
                 show_leaderboard=form.show_leaderboard.data,
-                team=form.team.data
+                team=form.team.data,
+                companion_id=int(form.companion.data),
+                companion_name=form.companion_name.data if form.companion_name.data else None
             )
             user.set_password(form.password.data)
             db.session.add(user)
@@ -484,6 +498,10 @@ def create_app(config_class=Config):
     def dashboard():
         """User dashboard."""
         from datetime import datetime, timedelta
+        
+        # Set companion message in session on dashboard visit
+        if current_user.companion_id and 'companion_message' not in session:
+            session['companion_message'] = get_login_message(current_user.companion_id)
         
         # Get only books that the user has in their weekly plans
         user_book_ids = db.session.query(WeeklyPlan.book_id.distinct())\
@@ -787,6 +805,17 @@ def create_app(config_class=Config):
         
         db.session.commit()
         
+        # Store companion message in session if user has a companion (for bottom-right display)
+        if current_user.companion_id:
+            # Check how many different chapters were in this upload
+            chapters_in_upload = set(e.chapter_id for e in exercises_to_submit)
+            is_large_upload = len(chapters_in_upload) > 1
+            companion_msg = get_upload_message(current_user.companion_id, is_large_upload)
+            if companion_msg:
+                session['companion_message'] = companion_msg
+                # Also flash the message
+                flash(f"{companion_msg['emoji']} {companion_msg['name']}: {companion_msg['message']}", 'info')
+        
         if total_points_earned > 0:
             flash(f'Successfully submitted solution for {submission_count} exercise(s)! You earned {total_points_earned} points!', 'success')
         else:
@@ -861,9 +890,14 @@ def create_app(config_class=Config):
         sort_by = request.args.get('sort', 'total_exercises')
         # Get category filter parameter
         category_filter = request.args.get('category', 'all')
+        # Get team filter parameter
+        team_filter = request.args.get('team', 'all')
         
-        # Get all users
-        users = User.query.all()
+        # Get all users (with team filter if specified)
+        if team_filter != 'all':
+            users = User.query.filter_by(team=team_filter).all()
+        else:
+            users = User.query.all()
         
         # Calculate week/month/year start dates
         today = datetime.now().date()
@@ -946,7 +980,8 @@ def create_app(config_class=Config):
         return render_template('leaderboard.html', 
                              leaderboard=leaderboard_data, 
                              sort_by=sort_by,
-                             category_filter=category_filter)
+                             category_filter=category_filter,
+                             team_filter=team_filter)
     
     @app.route('/weekly-plan', methods=['GET', 'POST'])
     @login_required
@@ -1050,7 +1085,7 @@ def create_app(config_class=Config):
     @app.route('/weekly-plan/delete/<int:plan_id>', methods=['POST'])
     @login_required
     def delete_weekly_plan(plan_id):
-        """Delete a weekly plan."""
+        """Delete a weekly plan and all associated progress for that book."""
         plan = WeeklyPlan.query.get_or_404(plan_id)
         
         # Check if plan belongs to current user
@@ -1058,10 +1093,40 @@ def create_app(config_class=Config):
             flash('You do not have permission to delete this plan.', 'danger')
             return redirect(url_for('weekly_plan'))
         
+        book_id = plan.book_id
+        
+        # Delete all submissions for exercises in this book
+        submissions_to_delete = Submission.query.join(Exercise).join(Chapter)\
+            .filter(Submission.user_id == current_user.id, Chapter.book_id == book_id).all()
+        
+        # Calculate points to deduct
+        points_to_deduct = sum(sub.points_earned for sub in submissions_to_delete)
+        
+        # Delete all submissions
+        for submission in submissions_to_delete:
+            db.session.delete(submission)
+        
+        # Delete all reading section completions for this book
+        from models import ReadingSection
+        reading_completions = ReadingSection.query.join(Chapter)\
+            .filter(ReadingSection.user_id == current_user.id, Chapter.book_id == book_id).all()
+        
+        # Add reading points to deduction
+        points_to_deduct += sum(reading.points_earned for reading in reading_completions)
+        
+        # Delete reading completions
+        for reading in reading_completions:
+            db.session.delete(reading)
+        
+        # Deduct points from user's total
+        if current_user.total_points:
+            current_user.total_points = max(0, current_user.total_points - points_to_deduct)
+        
+        # Delete the weekly plan
         db.session.delete(plan)
         db.session.commit()
         
-        flash('Weekly plan deleted successfully!', 'success')
+        flash(f'Weekly plan deleted successfully! Reset all progress for this book and deducted {points_to_deduct} points.', 'success')
         return redirect(url_for('weekly_plan'))
     
     @app.route('/uploads/<filename>')
@@ -1202,6 +1267,12 @@ def create_app(config_class=Config):
                 else:
                     flash('You can only change your nickname once per month.', 'warning')
             
+            # Handle companion name change
+            new_companion_name = request.form.get('companion_name', '').strip()
+            if new_companion_name != current_user.companion_name:
+                current_user.companion_name = new_companion_name if new_companion_name else None
+                flash('Companion name updated successfully!', 'success')
+            
             # Update privacy settings
             current_user.public_profile = 'public_profile' in request.form
             current_user.public_stats = 'public_stats' in request.form
@@ -1213,7 +1284,9 @@ def create_app(config_class=Config):
             flash('Settings updated successfully!', 'success')
             return redirect(url_for('settings'))
         
-        return render_template('settings.html')
+        # Import timedelta for template
+        from datetime import timedelta
+        return render_template('settings.html', timedelta=timedelta)
     
     @app.route('/request-book', methods=['POST'])
     @login_required

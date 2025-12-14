@@ -36,6 +36,10 @@ class User(UserMixin, db.Model):
     # Team system
     team = db.Column(db.String(20))  # 'red', 'blue', or 'green'
     
+    # Companion system
+    companion_id = db.Column(db.Integer)  # ID of chosen companion (1-5)
+    companion_name = db.Column(db.String(80))  # Custom name for companion
+    
     # Relationships
     submissions = db.relationship('Submission', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     weekly_plans = db.relationship('WeeklyPlan', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -109,6 +113,31 @@ class User(UserMixin, db.Model):
         
         self.streak_days = current_streak
         self.longest_streak = max(self.longest_streak, current_streak)
+    
+    def get_companion_emoji(self):
+        """Get companion emoji based on companion_id."""
+        companions = {
+            1: '🦉',
+            2: '🦊',
+            3: '🐻',
+            4: '🐱',
+            5: '🦁'
+        }
+        return companions.get(self.companion_id, '🦉')
+    
+    def get_companion_name(self):
+        """Get companion name - custom name if set, otherwise default name."""
+        if self.companion_name:
+            return self.companion_name
+        
+        companions = {
+            1: 'Wise Owl',
+            2: 'Speedy Fox',
+            3: 'Strong Bear',
+            4: 'Clever Cat',
+            5: 'Brave Lion'
+        }
+        return companions.get(self.companion_id, 'Wise Owl')
     
     def __repr__(self):
         return f'<User {self.username}>'

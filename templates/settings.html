@@ -38,6 +38,19 @@
                                 </small>
                             </div>
                             
+                            <div class="mb-3">
+                                <label for="companion_name" class="form-label">
+                                    <i class="bi bi-heart"></i> Companion Name
+                                </label>
+                                <input type="text" class="form-control" id="companion_name" name="companion_name" 
+                                       value="{{ current_user.companion_name if current_user.companion_name else '' }}" 
+                                       placeholder="Give your companion a custom name"
+                                       maxlength="80">
+                                <small class="form-text text-muted">
+                                    Personalize your {{ current_user.get_companion_emoji() }} companion's name (default: {{ current_user.get_companion_name() if not current_user.companion_name else 'will use custom name' }})
+                                </small>
+                            </div>
+                            
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="show_leaderboard" name="show_leaderboard" 
                                        {% if current_user.show_leaderboard %}checked{% endif %}>

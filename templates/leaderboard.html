@@ -16,23 +16,45 @@
 
 <!-- Category Filter -->
 <div class="row mb-3">
-    <div class="col-12">
+    <div class="col-md-6 mb-2">
+        <label class="form-label fw-bold">Filter by Category:</label>
         <div class="btn-group" role="group" aria-label="Category filter">
-            <a href="?category=all{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
-               class="btn {% if category_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                All Categories
+            <a href="?category=all&team={{ team_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if category_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                All
             </a>
-            <a href="?category=high_school{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
-               class="btn {% if category_filter == 'high_school' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            <a href="?category=high_school&team={{ team_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if category_filter == 'high_school' %}btn-primary{% else %}btn-outline-primary{% endif %}">
                 High School
             </a>
-            <a href="?category=undergraduate{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
-               class="btn {% if category_filter == 'undergraduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            <a href="?category=undergraduate&team={{ team_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if category_filter == 'undergraduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
                 Undergraduate
             </a>
-            <a href="?category=graduate{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
-               class="btn {% if category_filter == 'graduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+            <a href="?category=graduate&team={{ team_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if category_filter == 'graduate' %}btn-primary{% else %}btn-outline-primary{% endif %}">
                 Graduate
+            </a>
+        </div>
+    </div>
+    <div class="col-md-6 mb-2">
+        <label class="form-label fw-bold">Filter by Team:</label>
+        <div class="btn-group" role="group" aria-label="Team filter">
+            <a href="?team=all&category={{ category_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if team_filter == 'all' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                All Teams
+            </a>
+            <a href="?team=red&category={{ category_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if team_filter == 'red' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                🔴 Red
+            </a>
+            <a href="?team=blue&category={{ category_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if team_filter == 'blue' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                🔵 Blue
+            </a>
+            <a href="?team=green&category={{ category_filter }}{% if sort_by != 'total_exercises' %}&sort={{ sort_by }}{% endif %}" 
+               class="btn btn-sm {% if team_filter == 'green' %}btn-success{% else %}btn-outline-success{% endif %}">
+                🟢 Green
             </a>
         </div>
     </div>
@@ -49,43 +71,43 @@
                                 <th style="width: 80px;">Rank</th>
                                 <th>User</th>
                                 <th class="text-center">
-                                    <a href="?sort=total_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'total_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=total_exercises&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'total_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         Total Exercises
                                         {% if sort_by == 'total_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=total_points{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'total_points' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=total_points&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'total_points' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         Total Points
                                         {% if sort_by == 'total_points' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=week_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=week_exercises&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'week_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Week
                                         {% if sort_by == 'week_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=month_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'month_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=month_exercises&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'month_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Month
                                         {% if sort_by == 'month_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=year_exercises{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="text-decoration-none {% if sort_by == 'year_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=year_exercises&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'year_exercises' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         This Year
                                         {% if sort_by == 'year_exercises' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=streak" class="text-decoration-none {% if sort_by == 'streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=streak&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         Current Streak
                                         {% if sort_by == 'streak' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
                                 </th>
                                 <th class="text-center">
-                                    <a href="?sort=longest_streak" class="text-decoration-none {% if sort_by == 'longest_streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
+                                    <a href="?sort=longest_streak&category={{ category_filter }}&team={{ team_filter }}" class="text-decoration-none {% if sort_by == 'longest_streak' %}text-primary fw-bold{% else %}text-dark{% endif %}">
                                         Longest Streak
                                         {% if sort_by == 'longest_streak' %}<i class="bi bi-sort-down"></i>{% endif %}
                                     </a>
@@ -113,9 +135,22 @@
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ url_for('user_profile', username=entry.user.username) }}" class="text-decoration-none">
+                                    {% set team_colors = {
+                                        'red': 'text-danger',
+                                        'blue': 'text-primary',
+                                        'green': 'text-success'
+                                    } %}
+                                    {% set color_class = team_colors.get(entry.user.team, 'text-dark') %}
+                                    <a href="{{ url_for('user_profile', username=entry.user.username) }}" class="text-decoration-none {{ color_class }}">
                                         <strong>{{ entry.display_name }}</strong>
                                     </a>
+                                    {% if entry.user.team == 'red' %}
+                                        <span class="badge bg-danger">🔴</span>
+                                    {% elif entry.user.team == 'blue' %}
+                                        <span class="badge bg-primary">🔵</span>
+                                    {% elif entry.user.team == 'green' %}
+                                        <span class="badge bg-success">🟢</span>
+                                    {% endif %}
                                     {% if entry.user.id == current_user.id %}
                                         <span class="badge bg-info">You</span>
                                     {% endif %}

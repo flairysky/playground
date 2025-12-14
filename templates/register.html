@@ -89,6 +89,32 @@
                         <small class="form-text text-muted">Join a team and compete together!</small>
                     </div>
                     
+                    <div class="mb-3">
+                        {{ form.companion.label(class="form-label") }}
+                        {{ form.companion(class="form-select" + (" is-invalid" if form.companion.errors else "")) }}
+                        {% if form.companion.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.companion.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Choose a companion to motivate you on your journey!</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.companion_name.label(class="form-label") }}
+                        {{ form.companion_name(class="form-control" + (" is-invalid" if form.companion_name.errors else ""), placeholder="e.g., Buddy, Professor, Coach...") }}
+                        {% if form.companion_name.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.companion_name.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <small class="form-text text-muted">Leave empty to use the default name</small>
+                    </div>
+                    
                     <div class="mb-4">
                         <div class="form-check">
                             {{ form.show_leaderboard(class="form-check-input") }}
